@@ -71,8 +71,3 @@ pub fn read_config_file(file_path: &Path) -> io::Result<(String, String)> {
 
     Ok((savepath, shortcut))
 }
-
-pub fn check_shortcut(shortcut: String) -> {
-
-
-}
