@@ -1,6 +1,5 @@
-use std::fs::{File};
+use std::fs::File;
 use std::io::{self, BufRead, BufReader,  BufWriter, Write, Read};
-
 use std::path::Path;
 
 
@@ -49,7 +48,7 @@ pub fn read_config_file(file_path: &Path) -> io::Result<(String, String)> {
     // Read the first line of the file (savepath)
     let savepath = match path_reader.lines().next() {
         Some(Ok(path)) => path,
-        _ => "No saved path".to_string(),
+        _ => "target".to_string(),
     };
 
     // Re-open the file using a new BufReader
@@ -59,15 +58,35 @@ pub fn read_config_file(file_path: &Path) -> io::Result<(String, String)> {
     // Read the second line of the file (shortcut)
     let shortcut = match shortcut_reader.lines().nth(1) {
         Some(Ok(shortcut)) => shortcut,
-        Some(Err(err)) => {
-            eprintln!("Error while reading the second line: {:?}", err);
-            "Default Shortcut".to_string()
+        Some(Err(_err)) => {
+            "ctrl + k".to_string()
         }
         None => {
-            eprintln!("There is no second line in the file.");
-            "Default Shortcut".to_string()
+            "ctrl + k".to_string()
         }
     };
 
     Ok((savepath, shortcut))
+}
+
+pub enum ShortcutValidation {
+    Valid,
+    Invalid,
+    Incomplete,
+}
+
+pub fn validate_shortcut(shortcut: &String) -> ShortcutValidation {
+    if shortcut.is_empty(){
+        ShortcutValidation::Invalid
+    } else if !shortcut.starts_with("ctrl +") {
+        ShortcutValidation::Invalid
+    } else {
+        let remaining_chars = &shortcut["ctrl +".len()..];
+
+        if remaining_chars.is_empty() {
+            ShortcutValidation::Incomplete
+        } else {
+            ShortcutValidation::Valid
+        }
+    }
 }

@@ -1,19 +1,19 @@
 use druid::{Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env};
-use druid::widget::{Either};
-
+use druid::widget::Either;
 use std::process::Command;
 
 mod custom_widgets;
 use custom_widgets::{initial_layout, save_path_layout, shortcut_layout};
 
 mod utils;
-use utils::{read_config_file};
+use utils::read_config_file;
+
 
 pub const HOME: Selector = Selector::new("my_app.home");
 pub const LAUNCH_OVERLAY: Selector = Selector::new("my_app.launch_overlay");
 pub const PATH_GUI: Selector = Selector::new("my_app.launch_pathgui");
 pub const SHORTCUT_GUI: Selector = Selector::new("my_app.launch_shortcutgui");
-
+pub const RUN_IN_BACKGROUND: Selector = Selector::new("my_app.launch_run_background");
 
 #[derive(Clone, Data, Lens)]
 pub struct MainState {
@@ -28,12 +28,12 @@ pub struct MainState {
 fn main() {
     let config_file_path = std::path::Path::new("../config/config.txt");
     let mut path = "target".to_string();
-    let mut shortcut_command = "P".to_string();
+    let mut shortcut_string = "ctrl + k".to_string();
 
     match read_config_file(config_file_path) {
         Ok((savepath, shortcut)) => {
             path = savepath;
-            shortcut_command = shortcut;
+            shortcut_string = shortcut;
         },
         Err(_) => {
             eprintln!("Error reading config file");
@@ -51,13 +51,14 @@ fn main() {
         path_gui: false,
         shortcut_gui: false,
         path,
-        shortcut: shortcut_command
+        shortcut: shortcut_string
     };
 
     AppLauncher::with_window(main_window)
         .delegate(Delegate {})
         .launch(initial_state)
         .expect("Failed to launch application");
+
 }
 
 
@@ -114,13 +115,22 @@ impl druid::AppDelegate<MainState> for Delegate {
             data.path_gui = false;
             data.shortcut_gui = true;
             Handled::Yes
-        } else if cmd.is(HOME)
-        { 
+        } else if cmd.is(HOME){ 
             data.launch_overlay = false;
             data.shortcut_gui = false;
             data.path_gui = false;
             Handled::Yes
-        } else {Handled::No}
+        }  else if cmd.is(RUN_IN_BACKGROUND){
+            Application::global().quit();
+            //run the background shortcut listener
+            let _ = Command::new(r"..\background_listener\release\background_listener.exe")
+            .spawn()
+            .expect("Failed to start background listener");
+            Handled::Yes
+        }
+        else {Handled::No}
     }
 
 }
+
+
