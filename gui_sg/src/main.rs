@@ -99,7 +99,7 @@ impl druid::AppDelegate<MainState> for Delegate {
             Application::global().quit();
 
             // Launch the overlay binary as a new process
-            let _ = Command::new(r"..\overlay_process\target\release\overlay_process.exe")
+            let _ = Command::new(r"..\overlay_process\release\overlay_process.exe")
                 .spawn()
                 .expect("Failed to start overlay process");
 
