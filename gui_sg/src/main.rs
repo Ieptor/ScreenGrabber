@@ -1,5 +1,5 @@
-use druid::{Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env};
-use druid::widget::Either;
+use druid::{Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt};
+use druid::widget::{Either, BackgroundBrush};
 use std::process::Command;
 
 mod custom_widgets;
@@ -22,18 +22,21 @@ pub struct MainState {
     path_gui: bool,
     shortcut_gui: bool,
     path: String,
-    shortcut: String,
+    bg_shortcut: String,
+    fs_shortcut: String,
 }
 
 fn main() {
     let config_file_path = std::path::Path::new("../config/config.txt");
     let mut path = "target".to_string();
-    let mut shortcut_string = "ctrl + k".to_string();
+    let mut bg_shortcut_string = "ctrl + k".to_string();
+    let mut fs_shortcut_string = "ctrl + f".to_string();
 
     match read_config_file(config_file_path) {
-        Ok((savepath, shortcut)) => {
+        Ok((savepath, bg_shortcut, fs_shortcut)) => {
             path = savepath;
-            shortcut_string = shortcut;
+            bg_shortcut_string = bg_shortcut;
+            fs_shortcut_string = fs_shortcut;
         },
         Err(_) => {
             eprintln!("Error reading config file");
@@ -42,8 +45,9 @@ fn main() {
 
     // Create the main window
     let main_window = WindowDesc::new(build_ui())
-        .title(LocalizedString::new("Simple GUI"))
-        .window_size((600.0, 400.0));
+        .title(LocalizedString::new("Snip grabber"))
+        .window_size((600.0, 400.0))
+        .resizable(false);
 
     // Launch the application
     let initial_state = MainState {
@@ -51,7 +55,8 @@ fn main() {
         path_gui: false,
         shortcut_gui: false,
         path,
-        shortcut: shortcut_string
+        bg_shortcut: bg_shortcut_string,
+        fs_shortcut: fs_shortcut_string,
     };
 
     AppLauncher::with_window(main_window)
@@ -63,10 +68,9 @@ fn main() {
 
 
 fn build_ui() -> impl Widget<MainState> {
-    
-    let initial_layout = initial_layout();
-    let save_path_layout = save_path_layout();
-    let shortcut_layout = shortcut_layout();
+    let initial_layout = initial_layout().background(BackgroundBrush::Color(Color::rgb(188.0/255.0, 189.0/255.0, 214.0/255.0)));
+    let save_path_layout = save_path_layout().background(BackgroundBrush::Color(Color::rgb(188.0/255.0, 189.0/255.0, 214.0/255.0)));
+    let shortcut_layout = shortcut_layout().background(BackgroundBrush::Color(Color::rgb(188.0/255.0, 189.0/255.0, 214.0/255.0)));
 
     Either::new(
         // If both path_gui and shortcut_gui are false, show the initial layout
