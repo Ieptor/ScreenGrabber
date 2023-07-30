@@ -1,11 +1,12 @@
-use druid::piet::{Color, RenderContext};
-use druid::widget::{Widget};
+use druid::piet::{Color, RenderContext, ImageFormat, InterpolationMode};
+use druid::widget::Widget;
 use druid::{Data, Env, EventCtx, Point, Rect, Selector, Lens, Event, LifeCycle, LifeCycleCtx, UpdateCtx, LayoutCtx, BoxConstraints, Size, Application};
 use screenshots::Screen;
-
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::Mutex;
+
+use crate::{IconData};
 
 
 #[derive(PartialEq)]
@@ -19,15 +20,17 @@ pub struct ScreenshotOverlay {
     end_point: Option<Point>,
     screen: Option<Screen>,
     overlay_state: OverlayState,
+    icon_data: IconData,
 }
 
 impl ScreenshotOverlay {
-    pub fn new() -> Self {
+    pub fn new(icon_data: IconData) -> Self {
         ScreenshotOverlay {
             start_point: None,
             end_point: None,
             screen: None,
             overlay_state: OverlayState::Selecting,
+            icon_data,
         }
     }
     pub fn set_screen(&mut self, screen: Screen) {
@@ -47,6 +50,10 @@ impl ScreenshotOverlay {
         self.overlay_state = OverlayState::ButtonsShown;
     }
 
+    pub fn hide_buttons(&mut self) {
+        self.overlay_state = OverlayState::Selecting;
+    }
+
 }
 
 const SELECT_AREA: Selector<()> = Selector::new("select-area");
@@ -56,7 +63,7 @@ const SELECT_AREA: Selector<()> = Selector::new("select-area");
 pub struct AppState {
     selection: Rect,
     screens: Arc<Vec<Screen>>,
-    capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen)>>>>
+    capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen)>>>>,
 }
 
 impl AppState {
@@ -76,6 +83,7 @@ trait IsInsideRect {
 impl IsInsideRect for Point {
     fn is_inside_rect(&self, origin: Point, size: Size) -> bool {
         self.x >= origin.x && self.x <= origin.x + size.width && self.y >= origin.y && self.y <= origin.y + size.height
+
     }
 }
 
@@ -83,20 +91,16 @@ const BUTTON_A_CLICKED: Selector<()> = Selector::new("button-a-clicked");
 const BUTTON_B_CLICKED: Selector<()> = Selector::new("button-b-clicked");
 const BUTTON_C_CLICKED: Selector<()> = Selector::new("button-c-clicked");
 
-fn get_clicked_button(mouse_pos: Point, data: &AppState) -> Option<Selector> {
-    let button_size = Size::new(30.0, 30.0); // Adjust the button size as needed
-    let button_spacing = 50.0; // Adjust the spacing between buttons as needed
+fn get_clicked_button(mouse_pos: Point, screen: Screen, data: &AppState) -> Option<Selector> {
+    let icon_size = Size::new(32.0, 32.0);
+    let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
 
-    let center = data.selection.center();
-    let left_button_origin = Point::new(center.x - button_size.width - button_spacing, data.selection.y1 + button_spacing);
-    let middle_button_origin = Point::new(center.x - button_size.width / 2.0, data.selection.y1 + button_spacing);
-    let right_button_origin = Point::new(center.x + button_spacing, data.selection.y1 + button_spacing);
-
-    if mouse_pos.is_inside_rect(left_button_origin, button_size) {
+    if mouse_pos.is_inside_rect(left_button_origin, icon_size) {
         Some(BUTTON_A_CLICKED)
-    } else if mouse_pos.is_inside_rect(middle_button_origin, button_size) {
+    
+    } else if mouse_pos.is_inside_rect(middle_button_origin, icon_size) {
         Some(BUTTON_B_CLICKED)
-    } else if mouse_pos.is_inside_rect(right_button_origin, button_size) {
+    } else if mouse_pos.is_inside_rect(right_button_origin, icon_size) {
         Some(BUTTON_C_CLICKED)
     } else {
         None
@@ -109,8 +113,6 @@ impl Widget<AppState> for ScreenshotOverlay {
             Event::MouseDown(mouse_event) => {
                 self.start_point = Some(mouse_event.pos);
 
-                //which screen?
-
                 let screens = &data.screens;
                 for screen in screens.iter() {
                     if self.is_point_in_screen(mouse_event.pos, screen) {
@@ -119,32 +121,35 @@ impl Widget<AppState> for ScreenshotOverlay {
                     }
                 }
 
-                
                 if self.overlay_state == OverlayState::ButtonsShown {
                     let mouse_pos = mouse_event.pos;
-                    if let Some(button_clicked) = get_clicked_button(mouse_pos, data) {
-                        match button_clicked {
-                            BUTTON_A_CLICKED => {
-                                println!("Button A clicked, sending message...");
-                                if let Ok(mut tx) = data.capture_channel.lock() {
-                                    if let Some(tx) = tx.take() {
-                                        // Notify the main thread to capture the screenshot
-                                        if let Some(screen) = self.screen {
-                                            tx.send((data.selection, screen)).expect("Failed to send message to main thread");
-                                            drop(tx);
-                                            Application::global().quit();
+                    if let Some(screen) = self.screen {
+                        if let Some(button_clicked) = get_clicked_button(mouse_pos, screen, data) {
+                            match button_clicked {
+                                BUTTON_A_CLICKED => {
+                                    println!("Button A clicked, sending message...");
+                                    if let Ok(mut tx) = data.capture_channel.lock() {
+                                        if let Some(tx) = tx.take() {
+                                            // Notify the main thread to capture the screenshot
+                                            if let Some(screen) = self.screen {
+                                                tx.send((data.selection, screen)).expect("Failed to send message to main thread");
+                                                drop(tx);
+                                                Application::global().quit();
+                                            }
                                         }
                                     }
-                                }
-                            },
-                            BUTTON_B_CLICKED => {println!("Button B clicked. Color: Green");
-                            Application::global().quit();
-                            },
-                            BUTTON_C_CLICKED => {Application::global().quit();}
-                            _ => {}
+                                },
+                                BUTTON_B_CLICKED => {println!("Button B clicked. Color: Green");
+                                Application::global().quit();
+                                },
+                                BUTTON_C_CLICKED => {Application::global().quit();}
+                                _ => {}
+                            }
+                            ctx.set_handled();
+                        } else {
+                            self.hide_buttons();
                         }
-                        ctx.set_handled();
-                    }
+                    }    
                 }
                 
                 ctx.set_active(true);
@@ -186,38 +191,44 @@ impl Widget<AppState> for ScreenshotOverlay {
         ctx.fill(data.selection, &selection_color);
 
         if self.overlay_state == OverlayState::ButtonsShown {
-            // Draw buttons below the selected area
-            let button_size = Size::new(30.0, 30.0); // Adjust the button size as needed
-            let button_spacing = 50.0; // Adjust the spacing between buttons as needed
+       
+            if let Some(screen) = self.screen {
+                let icon_size = Size::new(32.0, 32.0);
+                
+                let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
 
-            let center = data.selection.center();
-            let left_button_origin = Point::new(center.x - button_size.width - button_spacing, data.selection.y1 + button_spacing);
-            let middle_button_origin = Point::new(center.x - button_size.width / 2.0, data.selection.y1 + button_spacing);
-            let right_button_origin = Point::new(center.x + button_spacing, data.selection.y1 + button_spacing);
+                let left_button_rect = Rect::from_origin_size(left_button_origin, icon_size);
+                let middle_button_rect = Rect::from_origin_size(middle_button_origin, icon_size);
+                let right_button_rect = Rect::from_origin_size(right_button_origin, icon_size);
+        
+                let image = ctx
+                    .make_image(32, 32, &self.icon_data.save_icon, ImageFormat::Rgb)
+                    .unwrap();
+                ctx.draw_image(&image, left_button_rect, InterpolationMode::Bilinear);
 
-            // Define colors for the buttons
-            let button_color_a = Color::rgba(0.8, 0.0, 0.0, 0.8);
-            let button_color_b = Color::rgba(0.0, 0.8, 0.0, 0.8);
-            let button_color_c = Color::rgba(0.0, 0.0, 0.8, 0.8);
 
-            // Draw the buttons as rectangles
-            let button_a_rect = Rect::from_origin_size(left_button_origin, button_size);
-            ctx.fill(button_a_rect, &button_color_a);
+                let image = ctx
+                    .make_image(32, 32, &self.icon_data.boh_icon, ImageFormat::Rgb)
+                    .unwrap();
+                ctx.draw_image(&image, middle_button_rect, InterpolationMode::Bilinear);
 
-            let button_b_rect = Rect::from_origin_size(middle_button_origin, button_size);
-            ctx.fill(button_b_rect, &button_color_b);
-
-            let button_c_rect = Rect::from_origin_size(right_button_origin, button_size);
-            ctx.fill(button_c_rect, &button_color_c);
+                let image = ctx
+                    .make_image(32, 32, &self.icon_data.quit_icon, ImageFormat::Rgb)
+                    .unwrap();
+                ctx.draw_image(&image, right_button_rect, InterpolationMode::Bilinear);
+            }
        }
-}
+    }
+
+
+
 
     fn layout(&mut self, _ctx: &mut LayoutCtx, bc: &BoxConstraints, _data: &AppState, _env: &Env) -> Size {
         // Update the layout to account for the buttons below the selected area
         let mut size = bc.max();
         if self.overlay_state == OverlayState::ButtonsShown {
-            let button_height = 30.0; // Height of the buttons
-            size.height += button_height + 10.0; // 10.0 for spacing between buttons and selected area
+            let button_height = 32.0; // Height of the buttons
+            size.height += button_height + 2.0; // 10.0 for spacing between buttons and selected area
         }
         size
     }
@@ -228,7 +239,25 @@ impl Widget<AppState> for ScreenshotOverlay {
 
     fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &AppState, _data: &AppState, _env: &Env) {}
 
-   
-
 }
 
+
+fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Point, Point, Point){
+    let center = data.selection.center();
+    let button_spacing = 50.0;
+
+    let space_below = screen.display_info.height as f64 - data.selection.y1;
+    let mut vertical_offset = data.selection.y1 + button_spacing;
+
+    let available_space_below = space_below >= icon_size.height + button_spacing;
+
+    if !available_space_below {
+        vertical_offset = data.selection.y0 - icon_size.height - button_spacing;
+    }
+
+    let left_button_origin = Point::new(center.x - icon_size.width - button_spacing, vertical_offset);
+    let middle_button_origin = Point::new(center.x - icon_size.width / 2.0, vertical_offset);
+    let right_button_origin = Point::new(center.x + button_spacing, vertical_offset);
+
+    (left_button_origin, middle_button_origin, right_button_origin)
+}

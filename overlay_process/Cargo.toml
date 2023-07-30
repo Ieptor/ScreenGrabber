@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-druid = "0.8.3"
+druid-shell = "0.8.3"
+druid = { version = "0.8.3", features = ["svg"] }
 screenshots = "0.6.0"
 image = "0.23.14"

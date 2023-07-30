@@ -13,16 +13,42 @@ use overlay::*;
 mod utils;
 use utils::{compute_window_size, capture_screenshot};
 
+pub struct IconData {
+    save_icon: Vec<u8>,  
+    quit_icon: Vec<u8>,  
+    boh_icon: Vec<u8>,   
+}
+
+fn initialize_icons() -> IconData {
+    //gestire errori
+    let save_icon_data = image::open("../icons/save-icon.png").expect("Failed to load save icon");
+    let quit_icon_data = image::open("../icons/quit-icon.png").expect("Failed to load quit icon");
+    let boh_icon_data = image::open("../icons/boh-icon.png").expect("Failed to load boh icon");
+
+    let save_icon_data = save_icon_data.to_rgb8();
+    let quit_icon_data = quit_icon_data.to_rgb8();
+    let boh_icon_data = boh_icon_data.to_rgb8();
+
+    IconData {
+        save_icon: save_icon_data.to_vec(),
+        quit_icon: quit_icon_data.to_vec(),
+        boh_icon: boh_icon_data.to_vec(),
+    }
+    
+}
+
 fn run_overlay() {
     
     let screens = Screen::all().unwrap();
     let screens_arc = Arc::new(screens);
+    let icon_data = initialize_icons();
 
     let (tx, rx): (mpsc::Sender<(Rect, Screen)>, mpsc::Receiver<(Rect, Screen)>) = mpsc::channel();
 
     let (width, height, leftmost, topmost) = compute_window_size();
     
-    let overlay_window = WindowDesc::new(ScreenshotOverlay::new())
+    
+    let overlay_window = WindowDesc::new(ScreenshotOverlay::new(icon_data))
         .title(LocalizedString::new("Screenshot Overlay"))
         .transparent(true)
         .window_size(Size::new(width as f64, height as f64))
