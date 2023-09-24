@@ -10,3 +10,8 @@ druid-shell = "0.8.3"
 druid = { version = "0.8.3", features = ["svg"] }
 screenshots = "0.6.0"
 image = "0.23.14"
+clipboard = "0.5"
+arboard = { version = "3.2.1"}
+native-dialog = "0.6.4"
+thiserror = "1.0.48"
+anyhow = "1.0.75"

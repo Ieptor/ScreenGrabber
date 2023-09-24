@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use druid::{Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt};
 use druid::widget::{Either, BackgroundBrush};
 use std::process::Command;
@@ -7,6 +8,8 @@ use custom_widgets::{initial_layout, save_path_layout, shortcut_layout};
 
 mod utils;
 use utils::read_config_file;
+use arboard::{Clipboard, ImageData};
+use image::GenericImageView;
 
 
 pub const HOME: Selector = Selector::new("my_app.home");
@@ -26,11 +29,15 @@ pub struct MainState {
     fs_shortcut: String,
 }
 
+
+
 fn main() {
+
+
     let config_file_path = std::path::Path::new("../config/config.txt");
     let mut path = "target".to_string();
-    let mut bg_shortcut_string = "ctrl + k".to_string();
-    let mut fs_shortcut_string = "ctrl + f".to_string();
+    let mut bg_shortcut_string = "ctrl + k".to_string(); // run in background
+    let mut fs_shortcut_string = "ctrl + f".to_string(); // full screen
 
     match read_config_file(config_file_path) {
         Ok((savepath, bg_shortcut, fs_shortcut)) => {

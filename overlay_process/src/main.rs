@@ -40,10 +40,11 @@ fn initialize_icons() -> IconData {
 fn run_overlay() {
     
     let screens = Screen::all().unwrap();
+
     let screens_arc = Arc::new(screens);
     let icon_data = initialize_icons();
 
-    let (tx, rx): (mpsc::Sender<(Rect, Screen)>, mpsc::Receiver<(Rect, Screen)>) = mpsc::channel();
+    let (tx, rx): (mpsc::Sender<(Rect, Screen, i32)>, mpsc::Receiver<(Rect, Screen, i32)>) = mpsc::channel();
 
     let (width, height, leftmost, topmost) = compute_window_size();
     
@@ -63,16 +64,16 @@ fn run_overlay() {
         .expect("Failed to launch application");
 
 
-    
     thread::sleep(Duration::from_secs(1));
     match rx.recv() {
-                Ok((selection, screen)) => {
+                Ok((mut selection, screen, translation_factor)) => {
+                    selection.x0 = selection.x0 - translation_factor.abs() as f64;
                     capture_screenshot(selection, Some(screen));
+                    println!("ciao");
                 },
                 Err(_) => {
                     // Handle other possible errors here if needed.
                     println!("channel closed");
-                 
                 }
             }
 

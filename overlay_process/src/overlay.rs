@@ -5,11 +5,12 @@ use screenshots::Screen;
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::Mutex;
+use druid::platform_menus::mac::file::print;
 
 use crate::{IconData};
 
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum OverlayState {
     Selecting,
     ButtonsShown,
@@ -37,13 +38,18 @@ impl ScreenshotOverlay {
         self.screen = Some(screen);
     }
 
-    pub fn is_point_in_screen(&self, point: Point, screen: &Screen) -> bool {
-        let screen_right = screen.display_info.x as u32 + screen.display_info.width;
-        let screen_bottom = screen.display_info.y as u32 + screen.display_info.height;
-        point.x >= screen.display_info.x as f64
-            && point.x <= screen_right as f64
-            && point.y >= screen.display_info.y as f64
-            && point.y <= screen_bottom as f64
+    pub fn is_point_in_screen(&self, point: Point, screen: &Screen, translation_factor: i32) -> bool {
+        let screen_right = screen.display_info.x as i32 + screen.display_info.width as i32;
+        let screen_left = screen.display_info.x as i32;
+
+        //let screen_bottom = screen.display_info.y as i32 + screen.display_info.height as i32;
+
+        let translated_point_x = point.x - translation_factor as f64;
+
+        translated_point_x >= screen_left as f64 && translated_point_x <= screen_right as f64
+            //&& point.y >= screen.display_info.y as f64
+            //&& point.y <= screen_bottom as f64
+
     }
 
     pub fn show_buttons(&mut self) {
@@ -63,11 +69,11 @@ const SELECT_AREA: Selector<()> = Selector::new("select-area");
 pub struct AppState {
     selection: Rect,
     screens: Arc<Vec<Screen>>,
-    capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen)>>>>,
+    capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen, i32)>>>>,
 }
 
 impl AppState {
-    pub fn new(screens: Arc<Vec<Screen>>, capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen)>>>>) -> Self {
+    pub fn new(screens: Arc<Vec<Screen>>, capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen, i32)>>>>) -> Self {
         AppState {
             selection: Rect::ZERO,
             screens,
@@ -97,7 +103,6 @@ fn get_clicked_button(mouse_pos: Point, screen: Screen, data: &AppState) -> Opti
 
     if mouse_pos.is_inside_rect(left_button_origin, icon_size) {
         Some(BUTTON_A_CLICKED)
-    
     } else if mouse_pos.is_inside_rect(middle_button_origin, icon_size) {
         Some(BUTTON_B_CLICKED)
     } else if mouse_pos.is_inside_rect(right_button_origin, icon_size) {
@@ -114,10 +119,20 @@ impl Widget<AppState> for ScreenshotOverlay {
                 self.start_point = Some(mouse_event.pos);
 
                 let screens = &data.screens;
+
+                // find the translation factor corresponding to the minimum value of x
+                let mut translation_factor = i32::MAX;
                 for screen in screens.iter() {
-                    if self.is_point_in_screen(mouse_event.pos, screen) {
+                    if screen.display_info.x < translation_factor {
+                        translation_factor = screen.display_info.x
+                    }
+                }
+
+                for screen in screens.iter() {
+                    if self.is_point_in_screen(mouse_event.pos, screen, translation_factor.abs()) {
                         self.set_screen(screen.clone());
                         break;
+                    } else {
                     }
                 }
 
@@ -132,7 +147,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                                         if let Some(tx) = tx.take() {
                                             // Notify the main thread to capture the screenshot
                                             if let Some(screen) = self.screen {
-                                                tx.send((data.selection, screen)).expect("Failed to send message to main thread");
+                                                tx.send((data.selection, screen, translation_factor)).expect("Failed to send message to main thread");
                                                 drop(tx);
                                                 Application::global().quit();
                                             }
@@ -164,6 +179,8 @@ impl Widget<AppState> for ScreenshotOverlay {
                 ctx.set_handled();
 
                 self.show_buttons();
+                ctx.request_paint();
+
             }
             Event::MouseMove(mouse_event) => {
                 if ctx.is_active() {
@@ -191,8 +208,11 @@ impl Widget<AppState> for ScreenshotOverlay {
         ctx.fill(data.selection, &selection_color);
 
         if self.overlay_state == OverlayState::ButtonsShown {
-       
+
+
             if let Some(screen) = self.screen {
+
+
                 let icon_size = Size::new(32.0, 32.0);
                 
                 let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
@@ -205,7 +225,6 @@ impl Widget<AppState> for ScreenshotOverlay {
                     .make_image(32, 32, &self.icon_data.save_icon, ImageFormat::Rgb)
                     .unwrap();
                 ctx.draw_image(&image, left_button_rect, InterpolationMode::Bilinear);
-
 
                 let image = ctx
                     .make_image(32, 32, &self.icon_data.boh_icon, ImageFormat::Rgb)
@@ -243,6 +262,8 @@ impl Widget<AppState> for ScreenshotOverlay {
 
 
 fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Point, Point, Point){
+
+
     let center = data.selection.center();
     let button_spacing = 50.0;
 

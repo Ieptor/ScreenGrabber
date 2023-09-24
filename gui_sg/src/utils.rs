@@ -42,17 +42,17 @@ pub fn save_to_config_file(file_path: &Path, configuration: &str, type_: &str) -
 }
 
 pub fn read_config_file(file_path: &Path) -> io::Result<(String, String, String)> {
-    let mut file = File::open(file_path)?;
-    let path_reader = BufReader::new(&file);
+    // Open the file for reading separately for each reader
+    let file = File::open(file_path)?;
 
     // Read the first line of the file (savepath)
-    let savepath = match path_reader.lines().next() {
+    let savepath = match BufReader::new(&file).lines().next() {
         Some(Ok(path)) => path,
         _ => "target".to_string(),
     };
 
-    // Re-open the file using a new BufReader
-    file = File::open(file_path)?;
+    // Re-open the file using a new BufReader for the next line
+    let file = File::open(file_path)?;
     let mut shortcut_reader = BufReader::new(&file);
 
     // Read the second line of the file (shortcut)
@@ -66,8 +66,9 @@ pub fn read_config_file(file_path: &Path) -> io::Result<(String, String, String)
         }
     };
 
-    file = File::open(file_path)?;
-    shortcut_reader = BufReader::new(&file);
+    // Re-open the file using a new BufReader for the third line
+    let file = File::open(file_path)?;
+    let mut shortcut_reader = BufReader::new(&file);
 
     let fs_shortcut = match shortcut_reader.lines().nth(2) {
         Some(Ok(fsshortcut)) => fsshortcut,
@@ -79,9 +80,9 @@ pub fn read_config_file(file_path: &Path) -> io::Result<(String, String, String)
         }
     };
 
-
     Ok((savepath, bg_shortcut, fs_shortcut))
 }
+
 
 pub enum ShortcutValidation {
     Valid,
