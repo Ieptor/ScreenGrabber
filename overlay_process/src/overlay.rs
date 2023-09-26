@@ -40,6 +40,8 @@ impl ScreenshotOverlay {
     }
 
     pub fn is_point_in_screen(&self, point: Point, screen: &Screen, translation_factor: i32) -> bool {
+        use druid::Value::Point;
+
         let screen_right = screen.display_info.x as i32 + screen.display_info.width as i32;
         let screen_left = screen.display_info.x as i32;
 
@@ -129,8 +131,9 @@ impl Widget<AppState> for ScreenshotOverlay {
                     }
                 }
 
+                let p = druid::Point::new(data.selection.x0, data.selection.y0);
                 for screen in screens.iter() {
-                    if self.is_point_in_screen(mouse_event.pos, screen, translation_factor.abs()) {
+                    if self.is_point_in_screen(p, screen, translation_factor.abs()) {
                         self.set_screen(screen.clone());
                         break;
                     }
