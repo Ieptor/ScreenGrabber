@@ -12,6 +12,7 @@ use overlay::*;
 
 mod utils;
 use utils::{compute_window_size, capture_screenshot};
+use crate::utils::capture_full_screen_screenshot;
 
 pub struct IconData {
     save_icon: Vec<u8>,  
@@ -48,7 +49,6 @@ fn run_overlay() {
 
     let (width, height, leftmost, topmost) = compute_window_size();
     
-    
     let overlay_window = WindowDesc::new(ScreenshotOverlay::new(icon_data))
         .title(LocalizedString::new("Screenshot Overlay"))
         .transparent(true)
@@ -67,8 +67,10 @@ fn run_overlay() {
     thread::sleep(Duration::from_secs(1));
     match rx.recv() {
                 Ok((mut selection, screen, translation_factor)) => {
-                    selection.x0 = selection.x0 - translation_factor.abs() as f64;
-                    capture_screenshot(selection, Some(screen));
+                    //selection.x0 = selection.x0 - translation_factor.abs() as f64;
+                    //selection.x1 = selection.x1 - translation_factor.abs() as f64;
+                    capture_screenshot(selection, Some(screen), translation_factor);
+                    //capture_full_screen_screenshot(Some(screen), false);
                     println!("ciao");
                 },
                 Err(_) => {

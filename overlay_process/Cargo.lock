@@ -843,6 +843,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gif"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80792593675e051cf94a4b111980da2ba60d4a83e43e0048c5693baab3977045"
+dependencies = [
+ "color_quant",
+ "weezl",
+]
+
+[[package]]
 name = "gio"
 version = "0.16.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1024,7 +1034,7 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "color_quant",
- "gif",
+ "gif 0.11.4",
  "jpeg-decoder 0.1.22",
  "num-iter",
  "num-rational 0.3.2",
@@ -1043,6 +1053,8 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "color_quant",
+ "gif 0.12.0",
+ "jpeg-decoder 0.3.0",
  "num-rational 0.4.1",
  "num-traits",
  "png 0.17.9",
@@ -1414,6 +1426,7 @@ dependencies = [
  "image 0.23.14",
  "native-dialog",
  "screenshots",
+ "stitchy-core",
  "thiserror",
 ]
 
@@ -1767,7 +1780,7 @@ version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea0337740f86c70141e7596d81c2e76c0cd3726dbcee053ac18d0ec45101f8e"
 dependencies = [
- "gif",
+ "gif 0.11.4",
  "jpeg-decoder 0.3.0",
  "log",
  "pico-args",
@@ -1950,6 +1963,15 @@ name = "smallvec"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
+
+[[package]]
+name = "stitchy-core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84e5477cf7276097a6bd0b9e0725ca995adca094b1998e95d889d51b19968899"
+dependencies = [
+ "image 0.24.7",
+]
 
 [[package]]
 name = "str-buf"

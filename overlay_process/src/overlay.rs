@@ -34,6 +34,7 @@ impl ScreenshotOverlay {
             icon_data,
         }
     }
+
     pub fn set_screen(&mut self, screen: Screen) {
         self.screen = Some(screen);
     }
@@ -132,9 +133,11 @@ impl Widget<AppState> for ScreenshotOverlay {
                     if self.is_point_in_screen(mouse_event.pos, screen, translation_factor.abs()) {
                         self.set_screen(screen.clone());
                         break;
-                    } else {
                     }
                 }
+
+
+
 
                 if self.overlay_state == OverlayState::ButtonsShown {
                     let mouse_pos = mouse_event.pos;
@@ -164,12 +167,12 @@ impl Widget<AppState> for ScreenshotOverlay {
                         } else {
                             self.hide_buttons();
                         }
-                    }    
+                    }
                 }
-                
+
                 ctx.set_active(true);
                 ctx.set_handled();
-                
+
             }
 
             Event::MouseUp(mouse_event) => {
@@ -192,11 +195,11 @@ impl Widget<AppState> for ScreenshotOverlay {
                     }
                 }
             }
-        
+
             _ => (),
         }
     }
-    
+
 
     fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &AppState, _env: &Env) {
 
@@ -214,13 +217,13 @@ impl Widget<AppState> for ScreenshotOverlay {
 
 
                 let icon_size = Size::new(32.0, 32.0);
-                
+
                 let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
 
                 let left_button_rect = Rect::from_origin_size(left_button_origin, icon_size);
                 let middle_button_rect = Rect::from_origin_size(middle_button_origin, icon_size);
                 let right_button_rect = Rect::from_origin_size(right_button_origin, icon_size);
-        
+
                 let image = ctx
                     .make_image(32, 32, &self.icon_data.save_icon, ImageFormat::Rgb)
                     .unwrap();
@@ -251,9 +254,9 @@ impl Widget<AppState> for ScreenshotOverlay {
         }
         size
     }
-    
 
-    
+
+
     fn lifecycle(&mut self, _ctx: &mut LifeCycleCtx, _event: &LifeCycle, _data: &AppState, _env: &Env) {}
 
     fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &AppState, _data: &AppState, _env: &Env) {}
