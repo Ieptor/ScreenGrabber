@@ -1,7 +1,8 @@
 use std::borrow::Cow;
-use druid::{Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt};
+use druid::{ExtEventSink, Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt, WindowId};
 use druid::widget::{Either, BackgroundBrush};
 use std::process::Command;
+use screenshots::Screen;
 
 mod custom_widgets;
 use custom_widgets::{initial_layout, save_path_layout, shortcut_layout};
@@ -11,16 +12,17 @@ use utils::read_config_file;
 use arboard::{Clipboard, ImageData};
 use image::GenericImageView;
 
+use overlay_process::utils::capture_full_screen_screenshot;
 
 pub const HOME: Selector = Selector::new("my_app.home");
 pub const LAUNCH_OVERLAY: Selector = Selector::new("my_app.launch_overlay");
 pub const PATH_GUI: Selector = Selector::new("my_app.launch_pathgui");
 pub const SHORTCUT_GUI: Selector = Selector::new("my_app.launch_shortcutgui");
 pub const RUN_IN_BACKGROUND: Selector = Selector::new("my_app.launch_run_background");
+pub const FULLSCREEN: Selector = Selector::new("my_app.test");
 
 #[derive(Clone, Data, Lens)]
 pub struct MainState {
-    // Add a flag to indicate whether the overlay should be launched
     launch_overlay: bool,
     path_gui: bool,
     shortcut_gui: bool,
@@ -29,11 +31,7 @@ pub struct MainState {
     fs_shortcut: String,
 }
 
-
-
 fn main() {
-
-
     let config_file_path = std::path::Path::new("../config/config.txt");
     let mut path = "target".to_string();
     let mut bg_shortcut_string = "ctrl + k".to_string(); // run in background
@@ -53,7 +51,7 @@ fn main() {
     // Create the main window
     let main_window = WindowDesc::new(build_ui())
         .title(LocalizedString::new("Snip grabber"))
-        .window_size((600.0, 400.0))
+        .window_size((400.0, 400.0))
         .resizable(false);
 
     // Launch the application
@@ -66,13 +64,15 @@ fn main() {
         fs_shortcut: fs_shortcut_string,
     };
 
-    AppLauncher::with_window(main_window)
-        .delegate(Delegate {})
+    let launcher = AppLauncher::with_window(main_window);
+    let handle = launcher.get_external_handle();
+
+    launcher
+        .delegate(Delegate{main_window:handle})
         .launch(initial_state)
         .expect("Failed to launch application");
 
 }
-
 
 fn build_ui() -> impl Widget<MainState> {
     let initial_layout = initial_layout().background(BackgroundBrush::Color(Color::rgb(188.0/255.0, 189.0/255.0, 214.0/255.0)));
@@ -93,8 +93,9 @@ fn build_ui() -> impl Widget<MainState> {
     )
 }
 
-struct Delegate;
-
+struct Delegate {
+    main_window: ExtEventSink
+}
 impl druid::AppDelegate<MainState> for Delegate {
     fn command(
         &mut self,
@@ -114,7 +115,6 @@ impl druid::AppDelegate<MainState> for Delegate {
             let _ = Command::new(r"..\overlay_process\release\overlay_process.exe")
                 .spawn()
                 .expect("Failed to start overlay process");
-
             Handled::Yes
         } else if cmd.is(PATH_GUI) {
             data.launch_overlay = false;
@@ -138,10 +138,11 @@ impl druid::AppDelegate<MainState> for Delegate {
             .spawn()
             .expect("Failed to start background listener");
             Handled::Yes
-        }
-        else {Handled::No}
+        } else if cmd.is(FULLSCREEN){
+            println!("capturing fullscreen");
+            let screens = Screen::all().unwrap();
+            capture_full_screen_screenshot(Some(screens[0]), true);
+           Handled::Yes
+        } else {Handled::No}
     }
-
 }
-
-

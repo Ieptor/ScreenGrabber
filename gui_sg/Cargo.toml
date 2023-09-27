@@ -3,6 +3,7 @@ name = "gui_sg"
 version = "0.1.0"
 edition = "2021"
 
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -13,3 +14,4 @@ native-dialog = "0.6.4"
 arboard = { version = "3.2.1"}
 thiserror = "1.0.48"
 anyhow = "1.0.75"
+overlay_process = { path = "../overlay_process" }
