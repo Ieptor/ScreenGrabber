@@ -95,9 +95,9 @@ impl Widget<MainState> for IconButton {
         // Layout the child widgets (Svg and Label) and return the size.
 
         if self.main_button {
-            let icon_size = bc.constrain(Size::new(120.0, 50.0)); 
-            let label_size = bc.constrain(Size::new(140.0, 50.0)); 
-            Size::new(200.0, 50.0)
+            let icon_size = Size::new(120.0, 45.0); 
+            let label_size = Size::new(140.0, 45.0); 
+            Size::new(icon_size.width + 50.0, icon_size.height)
 
         } else {
             let icon_size = bc.constrain(Size::new(50.0, 50.0)); 
@@ -167,7 +167,7 @@ impl Widget<MainState> for IconButton {
 
             let label_text = self.label.clone();
             let label_origin: Point = Point::new(
-                icon_size.width / 3.0, 
+                icon_size.width / 3.0 + 10.0, 
                 icon_size.height / 3.0, 
             );
 
@@ -196,6 +196,7 @@ pub fn create_button_row() -> impl Widget<MainState> {
         .with_child(IconButton::new(save_icon_svg, "Path".to_string(), PATH_GUI, false))
         .with_spacer(80.0)
         .with_child(IconButton::new(shortcut_icon_svg, "Shortcuts".to_string(), SHORTCUT_GUI, false))
+        .padding(10.0)
         //.background(Color::BLACK)
 }
 
@@ -207,23 +208,31 @@ pub fn initial_layout() -> impl Widget<MainState> {
     let background_icon: SvgData = SvgData::from_str(BACKGROUND_ICON_SVG).expect("failed");
     let full_screenshot_icon: SvgData = SvgData::from_str(FULLSCREEN_ICON_SVG).expect("failed");
 
-    let snip = Container::new(IconButton::new(snip_icon, "Take a screenshot".to_string(), LAUNCH_OVERLAY, true).background(Color::BLUE));
-    let background = Container::new(IconButton::new(background_icon, "Run in background".to_string(), RUN_IN_BACKGROUND, true).background(Color::BLUE));
-    let fullscreen = Container::new(IconButton::new(full_screenshot_icon, "Capture fullscreen".to_string(), FULLSCREEN, true).background(Color::BLUE));
+    let snip = Flex::row()
+               .with_child(IconButton::new(snip_icon, "Take a screenshot".to_string(), LAUNCH_OVERLAY, true));
+    let background = Flex::row()
+                    .with_child(IconButton::new(background_icon, "Run in background".to_string(), RUN_IN_BACKGROUND, true));
+    let fullscreen = Flex::row()
+                .with_child(IconButton::new(full_screenshot_icon, "Capture fullscreen".to_string(), FULLSCREEN, true));
+    
+    let cop = Label::new(|_data: &MainState, _env: &_| {
+                    format!("ScreenGrabber by: Pietro, Kevin, Salvatore")}).with_text_color(Color::BLACK);
 
     let function_column = Flex::column()
         .with_flex_child(snip, 1.0)
         .with_spacer(25.0)
         .with_flex_child(background, 1.0)
-        .with_spacer(15.0)
-        .with_flex_child(fullscreen, 1.0);
+        .with_spacer(25.0)
+        .with_flex_child(fullscreen, 1.0)
+        .with_spacer(35.0)
+        .with_flex_child(cop, 1.0);
 
 
     Flex::column()
         .cross_axis_alignment(CrossAxisAlignment::Center)
         .with_flex_child(button_row, 1.0) 
-        .with_spacer(50.0)
-        .with_flex_child(function_column, 1.0)
+        .with_spacer(60.0)
+        .with_flex_child(function_column, 3.0)
 }
 
 pub fn save_path_layout() -> impl Widget<MainState> {
@@ -257,15 +266,18 @@ pub fn save_path_layout() -> impl Widget<MainState> {
         })
         .fix_width(80.0);
 
+    let col = Flex::column()
+        .with_flex_child(label, 1.0)
+        .with_spacer(15.0)
+        .with_flex_child(text_input_widget, 1.0)
+        .with_spacer(5.0)
+        .with_flex_child(browse_button, 1.0);
+        
     Flex::column()
         .cross_axis_alignment(druid::widget::CrossAxisAlignment::Center)
         .with_flex_child(button_row, 1.0)
         .with_spacer(60.0)
-        .with_flex_child(label, 1.0) 
-        .with_spacer(20.0)
-        .with_flex_child(Align::centered(text_input_widget).fix_height(300.0).fix_width(300.0), 1.0)
-        .with_spacer(20.0)
-        .with_flex_child(browse_button, 1.0)
+        .with_flex_child(col, 3.0)
 }
 
 pub fn shortcut_layout() -> impl Widget<MainState> {
@@ -325,34 +337,25 @@ pub fn shortcut_layout() -> impl Widget<MainState> {
         })
         .padding(10.0);
 
+    let col = Flex::column()
+        .with_flex_child(label, 1.0)
+        .with_spacer(15.0)
+        .with_flex_child(shortcut_label, 1.0)
+        .with_spacer(10.0)
+        .with_flex_child(shortcut_textbox, 1.0)
+        .with_spacer(15.0)
+        .with_flex_child(full_screen_label, 1.0)
+        .with_spacer(10.0)
+        .with_flex_child(full_screen_textbox, 1.0)
+        .with_spacer(5.0)
+        .with_flex_child(apply_button, 2.0);
+
 
     Flex::column()
         .cross_axis_alignment(druid::widget::CrossAxisAlignment::Center)
         .with_flex_child(button_row, 1.0)
-        .with_spacer(60.0)
-        .with_flex_child(label, 1.0) 
-        .with_spacer(20.0)
-        .with_flex_child(
-            Align::centered(
-                Flex::row()
-                    .with_flex_child(shortcut_label, 1.0) 
-                    .with_spacer(20.0)
-                    .with_flex_child(shortcut_textbox, 1.0)
-                ).fix_height(300.0).fix_width(300.0),
-            1.0, 
-        )
-        .with_spacer(10.0)
-        .with_flex_child(
-            Align::centered(
-                Flex::row() 
-                    .with_flex_child(full_screen_label, 1.0)
-                    .with_spacer(20.0)
-                    .with_flex_child(full_screen_textbox, 1.0)
-                ).fix_height(300.0).fix_width(300.0),
-            1.0, 
-        )
-        .with_spacer(10.0)
-        .with_flex_child(apply_button, 1.0) // Set the flex of the save button to 0.0 to keep it at its natural size
+        .with_spacer(30.0)
+        .with_flex_child(col, 3.0)
 
 }
 
