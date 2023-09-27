@@ -5,8 +5,10 @@ use winapi::um::winuser::{self, MSG};
 //internal dependencies
 mod utils;
 use utils::read_config_file;
-
+use screenshots::Screen;
 use std::process::Command;
+use overlay_process::utils::capture_full_screen_screenshot;
+
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 
@@ -70,44 +72,57 @@ pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 }
 
 
-fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>) {
+fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut_fs_command: Option<(Modifiers, Code)>) {
    
-    if let Some((modifier, key)) = shortcut_command {
-        let manager = GlobalHotKeyManager::new().unwrap();
-        let hotkey = HotKey::new(Some(modifier),key);
-        let _ = manager.register(hotkey);
-        // Run the win32 event loop on the same thread
-        unsafe{
-            let mut msg: MSG = std::mem::zeroed();
-            
-            loop {
-              
-                if winuser::GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
-                    winuser::TranslateMessage(&msg);
-                    winuser::DispatchMessageW(&msg);
+    
+    if let Some((modifier, key1)) = shortcut_command {
+        if let Some((modifier2, key2)) = shortcut_fs_command {
+            let manager = GlobalHotKeyManager::new().unwrap();
+            let hotkey1 = HotKey::new(Some(modifier),key1);
+            let hotkey2 = HotKey::new(Some(modifier2),key2);
 
-                    if let Ok(_event) = GlobalHotKeyEvent::receiver().try_recv() {
-                        println!("sentito");
-                        let _ = Command::new(r"..\overlay_process\release\overlay_process.exe")
-                        .spawn()
-                        .expect("Failed to start overlay process");
-                    }
-                }
+            let id1 = hotkey1.id();
+            let id2 = hotkey2.id();
+            let _ = manager.register(hotkey1);
+            let _2 = manager.register(hotkey2);
+
+            // Run the win32 event loop on the same thread
+            unsafe{
+                let mut msg: MSG = std::mem::zeroed();
                 
+                loop {
+                
+                    if winuser::GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
+                        winuser::TranslateMessage(&msg);
+                        winuser::DispatchMessageW(&msg);
+
+                        if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+                            if event.id == id1 {
+                                let _ = Command::new(r"..\overlay_process\release\overlay_process.exe")
+                                        .spawn()
+                                        .expect("Failed to start overlay process");
+                            } else if event.id == id2 {
+                                let screens = Screen::all().unwrap();
+                                capture_full_screen_screenshot(Some(screens[0]), true);
+                            }
+                    }
+                    
+                }
             }
         }
-    } else {
-        eprintln!("Something wrong with shortcut command, not listening");
     }
+}
 }
 
 pub fn main(){
     let config_file_path = std::path::Path::new("../config/config.txt");
     let mut shortcut_string = "ctrl + k".to_string(); //default value to be override
+    let mut shortcut_fs = "ctrl + f".to_string();
 
     match read_config_file(config_file_path) {
-        Ok((_, shortcut)) => {
+        Ok((_, shortcut, fs)) => {
             shortcut_string = shortcut;
+            shortcut_fs = fs
         },
         Err(_) => {
             eprintln!("Error reading config file");
@@ -115,10 +130,10 @@ pub fn main(){
     }
     
     let shortcut_command = parse_hotkey(shortcut_string.clone());
-
+    let shortcutfs_command = parse_hotkey(shortcut_fs.clone());
     //let key_thread = std::thread::spawn(move || global_shortcut_handler(shortcut_command));
     //key_thread.join().expect("Failed to join the key-listening thread");
 
-    global_shortcut_handler(shortcut_command);
+    global_shortcut_handler(shortcut_command, shortcutfs_command);
 
 }

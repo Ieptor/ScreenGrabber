@@ -25,7 +25,6 @@ use image::math::utils;
 use native_dialog::{FileDialog, MessageDialog, MessageType};
 
 use screenshots::Image;
-use stitchy_core::ImageFiles;
 use thiserror::Error;
 
 pub fn compute_window_size()-> (i32, i32, i32, i32) {

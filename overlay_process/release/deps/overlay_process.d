@@ -1,6 +1,6 @@
-C:\Users\pganc\OneDrive\Desktop\project\overlay_process\target\release\deps\overlay_process.exe: src\main.rs src\overlay.rs src\utils.rs
+C:\Users\pganc\OneDrive\Desktop\sg\ScreenGrabber\overlay_process\target\release\deps\overlay_process.exe: src\main.rs src\overlay.rs src\utils.rs
 
-C:\Users\pganc\OneDrive\Desktop\project\overlay_process\target\release\deps\overlay_process.d: src\main.rs src\overlay.rs src\utils.rs
+C:\Users\pganc\OneDrive\Desktop\sg\ScreenGrabber\overlay_process\target\release\deps\overlay_process.d: src\main.rs src\overlay.rs src\utils.rs
 
 src\main.rs:
 src\overlay.rs:

@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 global-hotkey = "0.2.3"
 winapi = { version = "0.3", features = ["winuser"] }
+overlay_process = { path = "../overlay_process" }
+screenshots = "0.6.0"
