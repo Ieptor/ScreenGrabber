@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use druid::Rect;
 use screenshots::Screen;
 use std::{error, fs};
+use std::any::Any;
 
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};
@@ -10,7 +11,6 @@ use std::path::{Path, PathBuf};
 use image::{GenericImage, ImageBuffer, ImageFormat, ImageResult, Rgba, RgbImage};
 use image::io::Reader as ImageReader;
 
-extern crate stitchy_core;
 extern crate clipboard;
 extern crate image;
 
@@ -22,7 +22,7 @@ use std::sync::mpsc::RecvError;
 use arboard::{Clipboard, ImageData};
 use druid::platform_menus::mac::file::print;
 use image::math::utils;
-use native_dialog::{FileDialog, MessageDialog};
+use native_dialog::{FileDialog, MessageDialog, MessageType};
 
 use screenshots::Image;
 use stitchy_core::ImageFiles;
@@ -48,7 +48,7 @@ pub fn compute_window_size()-> (i32, i32, i32, i32) {
     return (width, height, leftmost, topmost)
 }
 
-pub fn read_config_file_savepath(file_path: &Path) -> io::Result<String> {
+fn read_config_file_savepath(file_path: &Path) -> io::Result<String> {
     let file = File::open(file_path).map_err(|err| {
         eprintln!("Error opening config file: {:?}", err);
         err
@@ -115,7 +115,7 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>, translati
         // Capture the screenshot using the adjusted coordinates on the unscaled screen
         let screen_shoot = screen.capture_area(x0 as i32, y0 as i32, width, height);
         dbg!(screen_shoot.is_ok());
-        screenshots.push(screen_shoot);
+        screenshots.push(screen_shoot.unwrap());
 
         residual =dbg! (residual - width as f64);
 
@@ -133,64 +133,38 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>, translati
 
     dbg!(screenshots.len());
 
-    // *************************************** merge all the screenshots ***************************************
+
     if screenshots.len() > 1 {
-        // convert into dynamic images
-        let mut dynamic_images_screenshots = vec![];
-        for image in screenshots {
-            let image = image.unwrap();
-            let png_bytes = image.to_png().unwrap();
-            let png_image = image::load_from_memory(&png_bytes).unwrap().to_rgb8();
-            dynamic_images_screenshots.push(png_image);
-        }
-
-        // set up all required conversion data from all the images
-        let width_combined: u32 = dynamic_images_screenshots.iter().map(|image| image.width()).sum();
-        let height_combined: u32 = dynamic_images_screenshots[0].height();
-        let mut combined_image = RgbImage::new(width_combined, height_combined);
-
-        // copy all the images horizontally in the dedicated buffer
-        let mut current_x = 0;
-        for image in &dynamic_images_screenshots {
-            let width_image = image.width();
-            for (x, y, pixel) in combined_image.enumerate_pixels_mut() {
-                if x >= current_x && x < current_x + width_image {
-                    *pixel = image.get_pixel(x - current_x, y).clone();
-                }
-            }
-            current_x += width_image;
-        }
-        let combined_image = DynamicImage::ImageRgb8(combined_image);
-
-        let image = Image::new(combined_image.width(), combined_image.height(), combined_image.to_rgba8().into_raw());
-
-        // save the entire image
+        // *************************************** merge all the screenshots ***************************************
+        let image = from_multiple_image_to_single_image(screenshots);
         handle_save_screenshot(image);
-
-
     } else {
-        // *************************************** else save only one screenshot ***************************************
-        let ss = screenshots.pop().unwrap();
-        match ss {
-            Ok(image) => {handle_save_screenshot(image); }
-            Err(err) => {panic!("Error capturing screenshot: {:?}", err);} // handle error!
-        };
-
-
+        // *************************************** save only one screenshot ***************************************
+        let image = screenshots.pop().unwrap();
+        handle_save_screenshot(image);
     }
 }
 
 pub fn capture_full_screen_screenshot (screen: Option<Screen>, all_screens: bool) {
-    let selected_screen = screen.expect("No screen selected");
-    let screen_shoot = selected_screen.capture();
+    let screen_shoot;
+    if all_screens {
+        let screens = Screen::all().unwrap();
+        let mut screenshots = Vec::new();
+        for screen in screens {
+            let screen_shoot = screen.capture();
+            screenshots.push(screen_shoot.unwrap())
+        }
+        screen_shoot = from_multiple_image_to_single_image(screenshots);
 
-    match screen_shoot {
-        Ok(image) => {handle_save_screenshot(image); }
-        Err(err) => {panic!("Error capturing screenshot: {:?}", err);} // handle error!
-    };
+    } else {
+        let selected_screen = screen.expect("No screen selected");
+        screen_shoot = selected_screen.capture().unwrap();
+    }
+
+    handle_save_screenshot(screen_shoot);
 }
 
-pub fn save_into_clipboard(output_path: &Path) -> Result<(), arboard::Error> {
+fn save_into_clipboard(output_path: &Path) -> Result<(), arboard::Error> {
     let mut clipboard = Clipboard::new().unwrap();
 
     let image = image::open(output_path.clone()).expect("Error opening the image");
@@ -209,12 +183,14 @@ pub fn save_into_clipboard(output_path: &Path) -> Result<(), arboard::Error> {
     Ok(())
 }
 
-pub fn handle_save_screenshot(screen_shoot: Image) {
+fn handle_save_screenshot(screen_shoot: Image) {
     let path_str = Path::new("../config/config.txt");
     match read_config_file_savepath(path_str) {
         Ok(path) => {
 
+            // check if the save path exists
             if !Path::new(&path).exists() {
+                show_message_box("Error", "The path does not exist! Configure again the saving path from the settings.", MessageType::Error);
                 panic!("The path does not exist!");
             }
 
@@ -229,12 +205,11 @@ pub fn handle_save_screenshot(screen_shoot: Image) {
                 .show_save_single_file()
                 .unwrap();
 
+            // convert into rgb8 and save into desired format
             if let Some(file_directory) = file_directory {
                 let output_path = Path::new(&file_directory);
-
                 let png_bytes = screen_shoot.to_png().expect("conversion error");
                 let png_image = image::load_from_memory(&png_bytes).unwrap();
-
                 let rgb_image: RgbImage = png_image.to_rgb8();
                 let format = ImageFormat::from_path(output_path).expect("Conversion error");
 
@@ -244,16 +219,55 @@ pub fn handle_save_screenshot(screen_shoot: Image) {
                 // save into the clipboard
                 save_into_clipboard(output_path).expect("Error copying into the clipboard");
 
-                println!("Image successfully saved!")
+                // finish result
+                show_message_box("Info", "Image successfully saved!", MessageType::Info)
             } else {
-                println!("Select a folder!");
+                show_message_box("Error", "Select a folder!", MessageType::Info);
             }
 
         },
-        //Default
-        Err(_) => {
-            //fs::write("target/screenshot.png", buffer).unwrap();
-            println!("NOT YET HANDLED");
-        }
+        _ => {}
     }
+}
+
+fn show_message_box(title: &str, message: &str, mt: MessageType) {
+    MessageDialog::new()
+        .set_title(title)
+        .set_text(message)
+        .set_type(mt) // info , warning, error
+        .show_alert()
+        .expect("Failed to show the message box.");
+}
+
+fn from_multiple_image_to_single_image(images: Vec<Image>) -> Image {
+
+    // convert into dynamic images
+    let mut dynamic_images_screenshots = vec![];
+    for image in images {
+        //let image = image.unwrap();
+        let png_bytes = image.to_png().unwrap();
+        let png_image = image::load_from_memory(&png_bytes).unwrap().to_rgb8();
+        dynamic_images_screenshots.push(png_image);
+    }
+
+    // set up all required conversion data from all the images
+    let width_combined: u32 = dynamic_images_screenshots.iter().map(|image| image.width()).sum();
+    let height_combined: u32 = dynamic_images_screenshots[0].height();
+    let mut combined_image = RgbImage::new(width_combined, height_combined);
+
+    // copy all the images horizontally in the dedicated buffer
+    let mut current_x = 0;
+    for image in &dynamic_images_screenshots {
+        let width_image = image.width();
+        for (x, y, pixel) in combined_image.enumerate_pixels_mut() {
+            if x >= current_x && x < current_x + width_image {
+                *pixel = image.get_pixel(x - current_x, y).clone();
+            }
+        }
+        current_x += width_image;
+    }
+    let combined_image = DynamicImage::ImageRgb8(combined_image);
+    let image = Image::new(combined_image.width(), combined_image.height(), combined_image.to_rgba8().into_raw());
+
+    image
 }

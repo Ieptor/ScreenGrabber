@@ -195,6 +195,7 @@ pub fn create_button_row() -> impl Widget<MainState> {
         .with_child(IconButton::new(save_icon_svg, "Path".to_string(), PATH_GUI, false))
         .with_spacer(80.0)
         .with_child(IconButton::new(shortcut_icon_svg, "Shortcuts".to_string(), SHORTCUT_GUI, false))
+
 }
 
 
@@ -203,23 +204,27 @@ pub fn initial_layout() -> impl Widget<MainState> {
 
     let snip_icon: SvgData = SvgData::from_str(SCREENSHOT_ICON_SVG).expect("failed");
     let background_icon: SvgData = SvgData::from_str(BACKGROUND_ICON_SVG).expect("failed");
+    let full_screenshot_icon: SvgData = SvgData::from_str(BACKGROUND_ICON_SVG).expect("failed");
 
     let snip = IconButton::new(snip_icon, "SCREENSHOT".to_string(), LAUNCH_OVERLAY, true);
-    let background = IconButton::new(background_icon, "RUN IN BACKGROUND".to_string(), RUN_IN_BACKGROUND, true);
+    let background = IconButton::new(background_icon, "    RUN IN \nBACKGROUND".to_string(), RUN_IN_BACKGROUND, true);
+    let fullscreen = IconButton::new(full_screenshot_icon, "FULL SCREEN \nSCREENSHOT".to_string(), RUN_IN_BACKGROUND, true);
 
 
     let snip_and_background = Flex::row()
         .with_flex_child(snip, 1.0)
-        .with_spacer(120.0)
+        .with_spacer(90.0)
         .with_flex_child(background, 1.0)
+        .with_spacer(90.0)
+        .with_flex_child(fullscreen, 1.0)
         .center();
 
     Flex::column()
         .cross_axis_alignment(CrossAxisAlignment::Center)
         .with_flex_child(button_row, 1.0) 
-        .with_spacer(100.0)
+        .with_spacer(110.0)
         .with_flex_child(Align::centered(snip_and_background).fix_height(250.0) .fix_width(250.0), 1.0)
-        .padding(20.0)
+        .padding(30.0)
 }
 
 pub fn save_path_layout() -> impl Widget<MainState> {
@@ -241,7 +246,7 @@ pub fn save_path_layout() -> impl Widget<MainState> {
                     let config_path =  std::path::Path::new("../config/config.txt");
                     match save_to_config_file(config_path, dir, "save_path") {
                         Ok(_) => {},
-                        Err(_) => {show_message_box("Error", "An error occured in saving the path, retry.");}
+                        Err(_) => {show_message_box("Error", "An error occurred in saving the path, retry.");}
                     }
                 }
                                 

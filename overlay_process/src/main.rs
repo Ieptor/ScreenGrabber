@@ -70,7 +70,7 @@ fn run_overlay() {
                     //selection.x0 = selection.x0 - translation_factor.abs() as f64;
                     //selection.x1 = selection.x1 - translation_factor.abs() as f64;
                     capture_screenshot(selection, Some(screen), translation_factor);
-                    //capture_full_screen_screenshot(Some(screen), false);
+                    //capture_full_screen_screenshot(Some(screen), true);
                     println!("ciao");
                 },
                 Err(_) => {

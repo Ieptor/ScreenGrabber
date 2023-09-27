@@ -203,15 +203,35 @@ impl Widget<AppState> for ScreenshotOverlay {
         }
     }
 
-
     fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &AppState, _env: &Env) {
 
         let size = ctx.size();
-        let bg_color = Color::rgba(0.0, 0.0, 0.0, 0.4);
-        ctx.fill(size.to_rect(), &bg_color);
+        let bg_color = Color::rgba(0.0, 0.0, 0.0, 0.7);
+        let selection_color = Color::rgba(0.0, 0.0, 0.0, 0.1);
+        let border_color = Color::rgba(1.0, 1.0, 1.0, 0.5);
+        let edge_color = Color::rgba(1.0, 1.0, 1.0, 1.0);
 
-        let selection_color = Color::rgba(0.0, 0.0, 0.8, 0.3);
+        // border
+        let borders = create_border_rectangles(data.selection, 3.0);
+        for border in borders {
+            ctx.fill(border, &border_color);
+        }
+
+        // selection
+        let result = surrounding_rectangles(size.to_rect().clone(), data.selection.clone());
+        for element in result {
+            ctx.fill(element, &bg_color);
+        }
         ctx.fill(data.selection, &selection_color);
+
+        // edges
+        let edges = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
+        for edge in edges {
+            ctx.fill(edge, &edge_color);
+        }
+
+
+
 
         if self.overlay_state == OverlayState::ButtonsShown {
 
@@ -245,9 +265,6 @@ impl Widget<AppState> for ScreenshotOverlay {
        }
     }
 
-
-
-
     fn layout(&mut self, _ctx: &mut LayoutCtx, bc: &BoxConstraints, _data: &AppState, _env: &Env) -> Size {
         // Update the layout to account for the buttons below the selected area
         let mut size = bc.max();
@@ -257,8 +274,6 @@ impl Widget<AppState> for ScreenshotOverlay {
         }
         size
     }
-
-
 
     fn lifecycle(&mut self, _ctx: &mut LifeCycleCtx, _event: &LifeCycle, _data: &AppState, _env: &Env) {}
 
@@ -287,4 +302,160 @@ fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Poi
     let right_button_origin = Point::new(center.x + button_spacing, vertical_offset);
 
     (left_button_origin, middle_button_origin, right_button_origin)
+}
+
+fn surrounding_rectangles(A: Rect, B: Rect) -> Vec<Rect> {
+    let mut result = Vec::new();
+
+    // Calcola il rettangolo sopra B
+    if B.y1 < A.y1 {
+        result.push(Rect {
+            x0: B.x0,
+            x1: B.x1,
+            y0: B.y1,
+            y1: A.y1,
+        });
+    }
+
+    // Calcola il rettangolo sotto B
+    if B.y0 > A.y0 {
+        result.push(Rect {
+            x0: B.x0,
+            x1: B.x1,
+            y0: A.y0,
+            y1: B.y0,
+        });
+    }
+
+    // Calcola il rettangolo a sinistra di B
+    if B.x0 > A.x0 {
+        result.push(Rect {
+            x0: A.x0,
+            x1: B.x0,
+            y0: A.y0,
+            y1: A.y1,
+        });
+    }
+
+    // Calcola il rettangolo a destra di B
+    if B.x1 < A.x1 {
+        result.push(Rect {
+            x0: B.x1,
+            x1: A.x1,
+            y0: A.y0,
+            y1: A.y1,
+        });
+    }
+
+    result
+}
+
+fn create_border_rectangles(rect: Rect, border_width: f64) -> Vec<Rect> {
+    let mut result = Vec::new();
+
+    // Calcola il rettangolo superiore
+    result.push(Rect {
+        x0: rect.x0 - border_width,
+        x1: rect.x1 + border_width,
+        y0: rect.y0 - border_width,
+        y1: rect.y0,
+    });
+
+    // Calcola il rettangolo inferiore
+    result.push(Rect {
+        x0: rect.x0 - border_width,
+        x1: rect.x1 + border_width,
+        y0: rect.y1,
+        y1: rect.y1 + border_width,
+    });
+
+    // Calcola il rettangolo sinistro
+    result.push(Rect {
+        x0: rect.x0 - border_width,
+        x1: rect.x0,
+        y0: rect.y0,
+        y1: rect.y1,
+    });
+
+    // Calcola il rettangolo destro
+    result.push(Rect {
+        x0: rect.x1,
+        x1: rect.x1 + border_width,
+        y0: rect.y0,
+        y1: rect.y1,
+    });
+
+    result
+}
+
+fn create_l_shaped_rectangles(rect: Rect, length: f64, width: f64, padding: f64) -> Vec<Rect> {
+
+    let mut result = Vec::new();
+
+    // Rettangoli orizzontali superiori
+    let top_left = Rect {
+        x0: rect.x0 - padding + width, // Inverti il segno di x e y
+        x1: rect.x0 - padding, // Inverti il segno di x e y
+        y0: rect.y1 + padding - length, // Inverti il segno di x e y
+        y1: rect.y1 + padding, // Inverti il segno di x e y
+    };
+    let top_right = Rect {
+        x0: rect.x1 + padding, // Inverti il segno di x e y
+        x1: rect.x1 + padding - width, // Inverti il segno di x e y
+        y0: rect.y1 + padding - length, // Inverti il segno di x e y
+        y1: rect.y1 + padding, // Inverti il segno di x e y
+    };
+
+    // Rettangoli orizzontali inferiori
+    let bottom_left = Rect {
+        x0: rect.x0 - padding + width, // Inverti il segno di x e y
+        x1: rect.x0 - padding, // Inverti il segno di x e y
+        y0: rect.y0 - padding, // Inverti il segno di x e y
+        y1: rect.y0 - padding + length, // Inverti il segno di x e y
+    };
+    let bottom_right = Rect {
+        x0: rect.x1 + padding, // Inverti il segno di x e y
+        x1: rect.x1 + padding - width, // Inverti il segno di x e y
+        y0: rect.y0 - padding, // Inverti il segno di x e y
+        y1: rect.y0 - padding + length, // Inverti il segno di x e y
+    };
+
+    // Rettangoli verticali sinistri
+    let left_top = Rect {
+        x0: rect.x0 - padding + length, // Inverti il segno di x e y
+        x1: rect.x0 - padding, // Inverti il segno di x e y
+        y0: rect.y1 + padding - width, // Inverti il segno di x e y
+        y1: rect.y1 + padding, // Inverti il segno di x e y
+    };
+    let left_bottom = Rect {
+        x0: rect.x0 - padding + length, // Inverti il segno di x e y
+        x1: rect.x0 - padding, // Inverti il segno di x e y
+        y0: rect.y0 - padding, // Inverti il segno di x e y
+        y1: rect.y0 - padding + width, // Inverti il segno di x e y
+    };
+
+    // Rettangoli verticali destri
+    let right_top = Rect {
+        x0: rect.x1 + padding, // Inverti il segno di x e y
+        x1: rect.x1 + padding - length, // Inverti il segno di x e y
+        y0: rect.y1 + padding - width, // Inverti il segno di x e y
+        y1: rect.y1 + padding, // Inverti il segno di x e y
+    };
+    let right_bottom = Rect {
+        x0: rect.x1 + padding, // Inverti il segno di x e y
+        x1: rect.x1 + padding - length, // Inverti il segno di x e y
+        y0: rect.y0 - padding, // Inverti il segno di x e y
+        y1: rect.y0 - padding + width, // Inverti il segno di x e y
+    };
+
+    result.push(top_left);
+    result.push(top_right);
+    result.push(bottom_left);
+    result.push(bottom_right);
+    result.push(left_top);
+    result.push(left_bottom);
+    result.push(right_top);
+    result.push(right_bottom);
+
+    result
 }
