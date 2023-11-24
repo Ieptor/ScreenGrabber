@@ -274,7 +274,7 @@ pub fn save_path_layout() -> impl Widget<MainState> {
         .with_flex_child(browse_button, 1.0);
         
     Flex::column()
-        .cross_axis_alignment(druid::widget::CrossAxisAlignment::Center)
+        .cross_axis_alignment(CrossAxisAlignment::Center)
         .with_flex_child(button_row, 1.0)
         .with_spacer(60.0)
         .with_flex_child(col, 3.0)
@@ -313,11 +313,11 @@ pub fn shortcut_layout() -> impl Widget<MainState> {
                     ShortcutValidation::Valid => {
                         match save_to_config_file(config_path, &data.bg_shortcut, "bg_shortcut") {
                             Ok(_) => flag = true,
-                            Err(_) => {show_message_box("Error", "An error occured in saving the configuration, retry.")}
+                            Err(_) => {show_message_box("Error", "An error occurred in saving the configuration, retry.")}
                         }
                         match save_to_config_file(config_path, &data.fs_shortcut, "fs_shortcut") {
                             Ok(_) => flag = true,
-                            Err(_) => {show_message_box("Error", "An error occured in saving the configuration, retry.")}
+                            Err(_) => {show_message_box("Error", "An error occurred in saving the configuration, retry.")}
                         }
 
                         if flag {
@@ -352,7 +352,7 @@ pub fn shortcut_layout() -> impl Widget<MainState> {
 
 
     Flex::column()
-        .cross_axis_alignment(druid::widget::CrossAxisAlignment::Center)
+        .cross_axis_alignment(CrossAxisAlignment::Center)
         .with_flex_child(button_row, 1.0)
         .with_spacer(30.0)
         .with_flex_child(col, 3.0)

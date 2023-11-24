@@ -6,48 +6,47 @@ use std::sync::mpsc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
+use anyhow::Context;
+use native_dialog::MessageType;
 
 mod overlay;
 use overlay::*;
+use image::{load_from_memory};
 
 mod utils;
-use utils::{compute_window_size, capture_screenshot};
-use crate::utils::capture_full_screen_screenshot;
+use utils::{compute_window_size, capture_screenshot, show_message_box};
+
+const SAVE_ICON_DATA: &[u8] = include_bytes!("../../icons/save-icon.png");
+const QUIT_ICON_DATA: &[u8] = include_bytes!("../../icons/quit-icon.png");
+const EDIT_ICON_DATA: &[u8] = include_bytes!("../../icons/edit-icon.png");
 
 pub struct IconData {
     save_icon: Vec<u8>,  
     quit_icon: Vec<u8>,  
-    boh_icon: Vec<u8>,   
+    edit_icon: Vec<u8>,
 }
 
-fn initialize_icons() -> IconData {
-    //gestire errori
-    let save_icon_data = image::open("../icons/save-icon.png").expect("Failed to load save icon");
-    let quit_icon_data = image::open("../icons/quit-icon.png").expect("Failed to load quit icon");
-    let boh_icon_data = image::open("../icons/boh-icon.png").expect("Failed to load boh icon");
+fn initialize_icons() -> anyhow::Result<IconData> {
 
-    let save_icon_data = save_icon_data.to_rgb8();
-    let quit_icon_data = quit_icon_data.to_rgb8();
-    let boh_icon_data = boh_icon_data.to_rgb8();
+    let save_icon = load_from_memory(SAVE_ICON_DATA).context("Failed to load save icon")?;
+    let quit_icon= load_from_memory(QUIT_ICON_DATA).context("Failed to load quit icon")?;
+    let edit_icon = load_from_memory(EDIT_ICON_DATA).context("Failed to load edit icon")?;
 
-    IconData {
-        save_icon: save_icon_data.to_vec(),
-        quit_icon: quit_icon_data.to_vec(),
-        boh_icon: boh_icon_data.to_vec(),
-    }
+    Ok(IconData {
+        save_icon: save_icon.to_rgb8().to_vec(),
+        quit_icon: quit_icon.to_rgb8().to_vec(),
+        edit_icon: edit_icon.to_rgb8().to_vec(),
+    })
     
 }
 
-fn run_overlay() {
+fn run_overlay() -> anyhow::Result<()> {
     
-    let screens = Screen::all().unwrap();
-
+    let screens = Screen::all().context("Impossible to retrieve available screens.")?;
     let screens_arc = Arc::new(screens);
-    let icon_data = initialize_icons();
-
+    let icon_data = initialize_icons()?;
     let (tx, rx): (mpsc::Sender<(Rect, Screen, i32)>, mpsc::Receiver<(Rect, Screen, i32)>) = mpsc::channel();
-
-    let (width, height, leftmost, topmost) = compute_window_size();
+    let (width, height, leftmost, topmost) = compute_window_size()?;
     
     let overlay_window = WindowDesc::new(ScreenshotOverlay::new(icon_data))
         .title(LocalizedString::new("Screenshot Overlay"))
@@ -61,26 +60,33 @@ fn run_overlay() {
     let initial_state = AppState::new(screens_arc.clone(), Arc::new(Mutex::new(Some(tx))));
     let _overlay_state = AppLauncher::with_window(overlay_window)
         .launch(initial_state)
-        .expect("Failed to launch application");
+        .context("Failed to launch application");
 
 
     thread::sleep(Duration::from_secs(1));
     match rx.recv() {
-                Ok((mut selection, screen, translation_factor)) => {
-                    //selection.x0 = selection.x0 - translation_factor.abs() as f64;
-                    //selection.x1 = selection.x1 - translation_factor.abs() as f64;
-                    capture_screenshot(selection, Some(screen), translation_factor);
-                    //capture_full_screen_screenshot(Some(screen), true);
-                    println!("ciao");
-                },
-                Err(_) => {
-                    // Handle other possible errors here if needed.
-                    println!("channel closed");
-                }
+        Ok((selection, screen, _translation_factor)) => {
+            //selection.x0 = selection.x0 - translation_factor.abs() as f64;
+            //selection.x1 = selection.x1 - translation_factor.abs() as f64;
+            match capture_screenshot(selection, Some(screen)) {
+                Ok(_) => { show_message_box("Info", "Image successfully saved!", MessageType::Info) }
+                Err(err) => { show_message_box("Error", &err.to_string(), MessageType::Error) }
             }
+        },
+        Err(_) => {
+            // Handle other possible errors here if needed.
+            println!("channel closed");
+        }
+    }
+    println!("ending..");
+
+    Ok(())
 
 }
 
 fn main (){
-    run_overlay();
+    match run_overlay() {
+        Ok(_) => {}
+        Err(err) => { show_message_box("Error", &err.to_string(), MessageType::Error) }
+    }
 }

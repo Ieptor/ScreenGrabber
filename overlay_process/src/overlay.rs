@@ -5,7 +5,6 @@ use screenshots::Screen;
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::Mutex;
-use druid::platform_menus::mac::file::print;
 
 use crate::{IconData};
 
@@ -25,6 +24,7 @@ pub struct ScreenshotOverlay {
 }
 
 impl ScreenshotOverlay {
+
     pub fn new(icon_data: IconData) -> Self {
         ScreenshotOverlay {
             start_point: None,
@@ -40,7 +40,6 @@ impl ScreenshotOverlay {
     }
 
     pub fn is_point_in_screen(&self, point: Point, screen: &Screen, translation_factor: i32) -> bool {
-        use druid::Value::Point;
 
         let screen_right = screen.display_info.x as i32 + screen.display_info.width as i32;
         let screen_left = screen.display_info.x as i32;
@@ -67,7 +66,6 @@ impl ScreenshotOverlay {
 
 const SELECT_AREA: Selector<()> = Selector::new("select-area");
 
-
 #[derive(Clone, Data, Lens)]
 pub struct AppState {
     selection: Rect,
@@ -92,7 +90,6 @@ trait IsInsideRect {
 impl IsInsideRect for Point {
     fn is_inside_rect(&self, origin: Point, size: Size) -> bool {
         self.x >= origin.x && self.x <= origin.x + size.width && self.y >= origin.y && self.y <= origin.y + size.height
-
     }
 }
 
@@ -116,6 +113,7 @@ fn get_clicked_button(mouse_pos: Point, screen: Screen, data: &AppState) -> Opti
 }
 
 impl Widget<AppState> for ScreenshotOverlay {
+
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
         match event {
             Event::MouseDown(mouse_event) => {
@@ -131,6 +129,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                     }
                 }
 
+                // find the screen where (x0, y0) is located
                 let p = druid::Point::new(data.selection.x0, data.selection.y0);
                 for screen in screens.iter() {
                     if self.is_point_in_screen(p, screen, translation_factor.abs()) {
@@ -139,15 +138,12 @@ impl Widget<AppState> for ScreenshotOverlay {
                     }
                 }
 
-
-
-
                 if self.overlay_state == OverlayState::ButtonsShown {
                     let mouse_pos = mouse_event.pos;
                     if let Some(screen) = self.screen {
                         if let Some(button_clicked) = get_clicked_button(mouse_pos, screen, data) {
                             match button_clicked {
-                                BUTTON_A_CLICKED => {
+                                BUTTON_A_CLICKED => { // save screenshot functionality
                                     println!("Button A clicked, sending message...");
                                     if let Ok(mut tx) = data.capture_channel.lock() {
                                         if let Some(tx) = tx.take() {
@@ -160,10 +156,12 @@ impl Widget<AppState> for ScreenshotOverlay {
                                         }
                                     }
                                 },
-                                BUTTON_B_CLICKED => {println!("Button B clicked. Color: Green");
-                                Application::global().quit();
+                                BUTTON_B_CLICKED => { // edit screenshot functionality
+                                    println!("Button B clicked. Color: Green");
+                                    Application::global().quit();
                                 },
-                                BUTTON_C_CLICKED => {Application::global().quit();}
+                                BUTTON_C_CLICKED => { // exit
+                                    Application::global().quit();}
                                 _ => {}
                             }
                             ctx.set_handled();
@@ -211,25 +209,27 @@ impl Widget<AppState> for ScreenshotOverlay {
         let border_color = Color::rgba(1.0, 1.0, 1.0, 0.5);
         let edge_color = Color::rgba(1.0, 1.0, 1.0, 1.0);
 
-        // border
+
+        // paint border
         let borders = create_border_rectangles(data.selection, 3.0);
         for border in borders {
             ctx.fill(border, &border_color);
         }
 
-        // selection
+        // paint selection
         let result = surrounding_rectangles(size.to_rect().clone(), data.selection.clone());
         for element in result {
             ctx.fill(element, &bg_color);
         }
         ctx.fill(data.selection, &selection_color);
 
-        // edges
-        let edges = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
-        for edge in edges {
-            ctx.fill(edge, &edge_color);
+        if data.selection.area() > 0.0 {
+            // paint edges
+            let edges = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
+            for edge in edges {
+                ctx.fill(edge, &edge_color);
+            }
         }
-
 
 
 
@@ -253,7 +253,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                 ctx.draw_image(&image, left_button_rect, InterpolationMode::Bilinear);
 
                 let image = ctx
-                    .make_image(32, 32, &self.icon_data.boh_icon, ImageFormat::Rgb)
+                    .make_image(32, 32, &self.icon_data.edit_icon, ImageFormat::Rgb)
                     .unwrap();
                 ctx.draw_image(&image, middle_button_rect, InterpolationMode::Bilinear);
 
@@ -304,46 +304,46 @@ fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Poi
     (left_button_origin, middle_button_origin, right_button_origin)
 }
 
-fn surrounding_rectangles(A: Rect, B: Rect) -> Vec<Rect> {
+fn surrounding_rectangles(a: Rect, b: Rect) -> Vec<Rect> {
     let mut result = Vec::new();
 
     // Calcola il rettangolo sopra B
-    if B.y1 < A.y1 {
+    if b.y1 < a.y1 {
         result.push(Rect {
-            x0: B.x0,
-            x1: B.x1,
-            y0: B.y1,
-            y1: A.y1,
+            x0: b.x0,
+            x1: b.x1,
+            y0: b.y1,
+            y1: a.y1,
         });
     }
 
     // Calcola il rettangolo sotto B
-    if B.y0 > A.y0 {
+    if b.y0 > a.y0 {
         result.push(Rect {
-            x0: B.x0,
-            x1: B.x1,
-            y0: A.y0,
-            y1: B.y0,
+            x0: b.x0,
+            x1: b.x1,
+            y0: a.y0,
+            y1: b.y0,
         });
     }
 
     // Calcola il rettangolo a sinistra di B
-    if B.x0 > A.x0 {
+    if b.x0 > a.x0 {
         result.push(Rect {
-            x0: A.x0,
-            x1: B.x0,
-            y0: A.y0,
-            y1: A.y1,
+            x0: a.x0,
+            x1: b.x0,
+            y0: a.y0,
+            y1: a.y1,
         });
     }
 
     // Calcola il rettangolo a destra di B
-    if B.x1 < A.x1 {
+    if b.x1 < a.x1 {
         result.push(Rect {
-            x0: B.x1,
-            x1: A.x1,
-            y0: A.y0,
-            y1: A.y1,
+            x0: b.x1,
+            x1: a.x1,
+            y0: a.y0,
+            y1: a.y1,
         });
     }
 

@@ -1,34 +1,22 @@
 use std::borrow::Cow;
 use druid::Rect;
 use screenshots::Screen;
-use std::{error, fs};
-use std::any::Any;
-
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read};
-use std::path::{Path, PathBuf};
-
-use image::{GenericImage, ImageBuffer, ImageFormat, ImageResult, Rgba, RgbImage};
-use image::io::Reader as ImageReader;
+use std::io::{BufRead, BufReader};
+use std::path::{Path};
+use image::{ImageFormat, RgbImage};
+use anyhow::{Result, anyhow};
 
 extern crate clipboard;
 extern crate image;
 
-use clipboard::{ClipboardContext, ClipboardProvider};
-use image::{DynamicImage, GenericImageView, ImageError};
-use std::error::Error;
-use std::io::Cursor;
-use std::sync::mpsc::RecvError;
-use arboard::{Clipboard, ImageData};
-use druid::platform_menus::mac::file::print;
-use image::math::utils;
+use image::{GenericImageView};
+use anyhow::{bail, Context};
 use native_dialog::{FileDialog, MessageDialog, MessageType};
-
 use screenshots::Image;
-use thiserror::Error;
 
-pub fn compute_window_size()-> (i32, i32, i32, i32) {
-    let screens = Screen::all().unwrap();
+pub fn compute_window_size()-> anyhow::Result<(i32, i32, i32, i32)> {
+    let screens = Screen::all().context("Impossible to retrieve available screens.")?;
 
     let mut leftmost = i32::MAX;
     let mut rightmost = i32::MIN;
@@ -44,35 +32,17 @@ pub fn compute_window_size()-> (i32, i32, i32, i32) {
     let width = rightmost - leftmost;
     let height = bottommost - topmost;
 
-    return (width, height, leftmost, topmost)
+    Ok((width, height, leftmost, topmost))
 }
 
-fn read_config_file_savepath(file_path: &Path) -> io::Result<String> {
-    let file = File::open(file_path).map_err(|err| {
-        eprintln!("Error opening config file: {:?}", err);
-        err
-    })?;
-
-    let reader = BufReader::new(file);
-
-    // Read the first line of the file
-    if let Some(Ok(path)) = reader.lines().next() {
-        // If the line is not empty, return the path
-        if !path.is_empty() {
-            return Ok(path);
-        }
-    }
-
-    // If the file is empty or there was an error reading, return an io::Error
-    Err(io::Error::new(io::ErrorKind::InvalidData, "Config file is empty"))
-}
-
-pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>, translation_factor: i32) {
+pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>) -> Result<()> {
 
     // build a Vec<Screen> without the screens we are sure are not needed
-    let initial_screen = screen.expect("No screen found");
-    let screens = Screen::all().unwrap(); // is ordered by x by default
-    let index = screens.iter().position(|s| s.display_info.id == initial_screen.display_info.id);
+    let initial_screen = screen.ok_or(anyhow!("No screen found"))?;
+    let screens = Screen::all().context("Failed to get the list of screens")?;
+    let index = screens
+        .iter()
+        .position(|s| s.display_info.id == initial_screen.display_info.id);
     let mut util_screens = Vec::new();
     if let Some(index) = index {
         util_screens = screens[index..].to_vec(); // take only the screens to the right of the initial screen
@@ -84,19 +54,22 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>, translati
     println!("SELECTION INFO: {:?}", selection);
     println!("initial residual: {}", residual);
     println!("----------------------------------");
-    for mut screen in util_screens {
-
+    for screen in util_screens {
         // build the selection parameters for the i-th screen
         let y0 = selection.y0; // always correct
         let y1 = selection.y1; // always correct
         let x0;
         let x1;
 
-        if selection.x0 > screen.display_info.width as f64 && selection.x1 > selection.x1 % screen.display_info.width as f64 { //
+        if selection.x0 > screen.display_info.width as f64
+            && selection.x1 > selection.x1 % screen.display_info.width as f64
+        {
             dbg!("rescale both");
             x0 = selection.x0 % screen.display_info.width as f64;
             x1 = selection.x1 % screen.display_info.width as f64;
-        } else if selection.x0 < screen.display_info.width as f64 && selection.x1 > selection.x1 % screen.display_info.width as f64 { //
+        } else if selection.x0 < screen.display_info.width as f64
+            && selection.x1 > selection.x1 % screen.display_info.width as f64
+        {
             dbg!("second");
             x0 = selection.x0 % screen.display_info.width as f64;
             x1 = screen.display_info.width as f64;
@@ -108,145 +81,152 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>, translati
 
         dbg!(x0);
         dbg!(x1);
-        let width =dbg! (((x1 - x0).abs()) as u32);
-        let height =((y1 - y0).abs()) as u32;
+        let width = (x1 - x0).abs() as u32;
+        let height = (y1 - y0).abs() as u32;
 
         // Capture the screenshot using the adjusted coordinates on the unscaled screen
-        let screen_shoot = screen.capture_area(x0 as i32, y0 as i32, width, height);
-        dbg!(screen_shoot.is_ok());
-        screenshots.push(screen_shoot.unwrap());
+        let screen_shoot = screen
+            .capture_area(x0 as i32, y0 as i32, width, height)
+            .context("Failed to capture screen")?;
+        screenshots.push(screen_shoot);
 
-        residual =dbg! (residual - width as f64);
+        residual = dbg!(residual - width as f64);
 
-        if residual <= 0 as f64 { // more area to cover...
+        if residual <= 0 as f64 {
+            // more area to cover...
             println!("capture finished!");
             break;
-        } println!("next screen...");
-
+        }
+        println!("next screen...");
 
         // update selection parameters...
         selection.x0 = selection.x0 - width as f64;
         selection.x1 = selection.x1 - width as f64;
-
     }
 
     dbg!(screenshots.len());
 
-
     if screenshots.len() > 1 {
         // *************************************** merge all the screenshots ***************************************
-        let image = from_multiple_image_to_single_image(screenshots);
-        handle_save_screenshot(image);
+        let image = from_multiple_image_to_single_image(screenshots)?;
+        handle_save_screenshot(image)?;
     } else {
         // *************************************** save only one screenshot ***************************************
-        let image = screenshots.pop().unwrap();
-        handle_save_screenshot(image);
-    }
-}
-
-pub fn capture_full_screen_screenshot (screen: Option<Screen>, all_screens: bool) {
-    let screen_shoot;
-    if all_screens {
-        let screens = Screen::all().unwrap();
-        let mut screenshots = Vec::new();
-        for screen in screens {
-            let screen_shoot = screen.capture();
-            screenshots.push(screen_shoot.unwrap())
-        }
-        screen_shoot = from_multiple_image_to_single_image(screenshots);
-
-    } else {
-        let selected_screen = screen.expect("No screen selected");
-        screen_shoot = selected_screen.capture().unwrap();
+        let image = screenshots.pop().ok_or(anyhow!("No screenshot available"))?;
+        handle_save_screenshot(image)?;
     }
 
-    handle_save_screenshot(screen_shoot);
-}
-
-fn save_into_clipboard(output_path: &Path) -> Result<(), arboard::Error> {
-    let mut clipboard = Clipboard::new().unwrap();
-
-    let image = image::open(output_path.clone()).expect("Error opening the image");
-
-    // convert the image from DynamicImage to ImageData
-    let img = ImageData {
-        width: image.width() as usize,
-        height: image.height() as usize,
-        bytes: Cow::from(image.to_rgba8().into_raw())
-    };
-    // write into the clipboard
-    match clipboard.set_image(img) {
-        Ok(_) => {}
-        Err(_) => { return Err(arboard::Error::ClipboardNotSupported) }
-    }
     Ok(())
 }
 
-fn handle_save_screenshot(screen_shoot: Image) {
-    let path_str = Path::new("../config/config.txt");
-    match read_config_file_savepath(path_str) {
-        Ok(path) => {
+pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool) -> Result<()> {
+    let screen_shoot: Image;
 
-            // check if the save path exists
-            if !Path::new(&path).exists() {
-                show_message_box("Error", "The path does not exist! Configure again the saving path from the settings.", MessageType::Error);
-                panic!("The path does not exist!");
-            }
+    if all_screens {
+        let screens = Screen::all().context("Failed to get the list of screens")?;
+        let mut screenshots = Vec::new();
 
-            // select save directory starting from the default one
-            let file_directory = FileDialog::new()
-                .add_filter("PNG", &["png"])
-                .add_filter("JPG", &["jpg"])
-                .add_filter("GIF", &["gif"])
-                .add_filter("JPEG", &["jpeg"])
-                .set_location(Path::new(&path))
-                .set_filename("default")
-                .show_save_single_file()
-                .unwrap();
+        for screen in screens {
+            let screen_shoot = screen.capture().context("Failed to capture screen")?;
+            screenshots.push(screen_shoot);
+        }
 
-            // convert into rgb8 and save into desired format
-            if let Some(file_directory) = file_directory {
-                let output_path = Path::new(&file_directory);
-                let png_bytes = screen_shoot.to_png().expect("conversion error");
-                let png_image = image::load_from_memory(&png_bytes).unwrap();
-                let rgb_image: RgbImage = png_image.to_rgb8();
-                let format = ImageFormat::from_path(output_path).expect("Conversion error");
-
-                // save file into file system
-                rgb_image.save_with_format(output_path, format).expect("conversion error");
-
-                // save into the clipboard
-                save_into_clipboard(output_path).expect("Error copying into the clipboard");
-
-                // finish result
-                show_message_box("Info", "Image successfully saved!", MessageType::Info)
-            } else {
-                show_message_box("Error", "Select a folder!", MessageType::Info);
-            }
-
-        },
-        _ => {}
+        screen_shoot = from_multiple_image_to_single_image(screenshots)?;
+    } else {
+        let selected_screen = screen.ok_or(anyhow!("No screen selected"))?;
+        screen_shoot = selected_screen.capture().context("Failed to capture screen")?;
     }
+
+    handle_save_screenshot(screen_shoot)?;
+
+    Ok(())
 }
 
-fn show_message_box(title: &str, message: &str, mt: MessageType) {
-    MessageDialog::new()
-        .set_title(title)
-        .set_text(message)
-        .set_type(mt) // info , warning, error
-        .show_alert()
-        .expect("Failed to show the message box.");
+fn read_config_file_savepath(file_path: &Path) -> anyhow::Result<String> {
+    let file = File::open(file_path).with_context(|| format!("Failed to open config file {:?}", file_path))?;
+    let reader = BufReader::new(file);
+
+    if let Some(Ok(path)) = reader.lines().next() {
+        if !path.is_empty() {
+            return Ok(path);
+        }
+    }
+
+    Err(anyhow::anyhow!("Config file is empty"))
 }
 
-fn from_multiple_image_to_single_image(images: Vec<Image>) -> Image {
+fn handle_save_screenshot(screen_shoot: Image) -> Result<()> {
+    let path_str = Path::new("../config/config.txt");
+    let path = read_config_file_savepath(path_str)
+        .context("Failed to read the configuration file")?;
+
+    // Verifica se il percorso di salvataggio esiste
+    if !Path::new(&path).exists() {
+        //show_message_box("Error", "The path does not exist! Configure the saving path from the settings.", MessageType::Error);
+        anyhow::bail!("The path does not exist! Configure the saving path from the settings.");
+    }
+
+    // Seleziona la directory di salvataggio a partire da quella predefinita
+    let file_directory = FileDialog::new()
+        .add_filter("PNG", &["png"])
+        .add_filter("JPG", &["jpg"])
+        .add_filter("GIF", &["gif"])
+        .add_filter("JPEG", &["jpeg"])
+        .set_location(Path::new(&path))
+        .set_filename("default")
+        .show_save_single_file()
+        .context("Failed to show the save file dialog")?;
+
+    // Converti in RGB8 e salva nel formato desiderato
+    if let Some(file_directory) = file_directory {
+        let output_path = Path::new(&file_directory);
+        let png_bytes = screen_shoot.to_png()?;
+        let png_image = image::load_from_memory(&png_bytes)?;
+        let rgb_image: RgbImage = png_image.to_rgb8();
+        let format = ImageFormat::from_path(output_path)?;
+
+        // Salva il file nel sistema di file
+        rgb_image.save_with_format(output_path, format)?;
+
+        // Salva negli appunti
+        save_into_clipboard(output_path).context("Error copying into the clipboard")?;
+
+        return Ok(());
+
+    } else {
+        //show_message_box("Error", "Select a folder!", MessageType::Info);
+        bail!("Select a folder!")
+    }
+
+}
+
+fn save_into_clipboard(output_path: &Path) -> anyhow::Result<()> {
+    let mut clipboard = arboard::Clipboard::new()
+        .context("Failed to initialize clipboard")?;
+
+    let image = image::open(output_path.clone())
+        .with_context(|| format!("Error opening the image at {:?}", output_path))?;
+
+    let img = arboard::ImageData {
+        width: image.width() as usize,
+        height: image.height() as usize,
+        bytes: Cow::from(image.to_rgba8().into_raw()),
+    };
+
+    clipboard.set_image(img)
+        .with_context(|| "Error copying into the clipboard")?;
+
+    Ok(())
+}
+
+fn from_multiple_image_to_single_image(images: Vec<Image>) -> Result<Image> {
 
     // convert into dynamic images
     let mut dynamic_images_screenshots = vec![];
     for image in images {
-        //let image = image.unwrap();
-        let png_bytes = image.to_png().unwrap();
-        let png_image = image::load_from_memory(&png_bytes).unwrap().to_rgb8();
-        dynamic_images_screenshots.push(png_image);
+        let png_bytes = image.to_png()?;
+        let png_image = image::load_from_memory(&png_bytes)?;
+        dynamic_images_screenshots.push(png_image.to_rgb8());
     }
 
     // set up all required conversion data from all the images
@@ -265,8 +245,18 @@ fn from_multiple_image_to_single_image(images: Vec<Image>) -> Image {
         }
         current_x += width_image;
     }
-    let combined_image = DynamicImage::ImageRgb8(combined_image);
+
+    let combined_image = image::DynamicImage::ImageRgb8(combined_image);
     let image = Image::new(combined_image.width(), combined_image.height(), combined_image.to_rgba8().into_raw());
 
-    image
+    Ok(image)
+}
+
+pub fn show_message_box(title: &str, message: &str, mt: MessageType) {
+    MessageDialog::new()
+        .set_title(title)
+        .set_text(message)
+        .set_type(mt) // info , warning, error
+        .show_alert()
+        .expect("Failed to show the message box.");
 }
