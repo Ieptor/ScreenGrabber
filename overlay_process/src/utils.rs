@@ -3,14 +3,13 @@ use druid::Rect;
 use screenshots::Screen;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::{Path};
-use image::{ImageFormat, RgbImage};
+use std::path::Path;
+use image::{ImageFormat, RgbImage, GenericImageView};
 use anyhow::{Result, anyhow};
 
 extern crate clipboard;
 extern crate image;
 
-use image::{GenericImageView};
 use anyhow::{bail, Context};
 use native_dialog::{FileDialog, MessageDialog, MessageType};
 use screenshots::Image;
@@ -119,6 +118,7 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>) -> Result
     Ok(())
 }
 
+
 pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool) -> Result<()> {
     let screen_shoot: Image;
 
@@ -153,7 +153,7 @@ fn read_config_file_savepath(file_path: &Path) -> anyhow::Result<String> {
     }
 
     Err(anyhow::anyhow!("Config file is empty"))
-}
+} 
 
 fn handle_save_screenshot(screen_shoot: Image) -> Result<()> {
     let path_str = Path::new("../config/config.txt");
@@ -199,6 +199,7 @@ fn handle_save_screenshot(screen_shoot: Image) -> Result<()> {
     }
 
 }
+
 
 fn save_into_clipboard(output_path: &Path) -> anyhow::Result<()> {
     let mut clipboard = arboard::Clipboard::new()

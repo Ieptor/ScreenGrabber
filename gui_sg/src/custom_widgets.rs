@@ -5,9 +5,9 @@ use crate::utils::{save_to_config_file, ShortcutValidation, validate_shortcuts};
 
 //external dependencies
 
-use druid::widget::{Button, Flex, WidgetExt, Label, CrossAxisAlignment, TextBox, Controller, SvgData, Svg, Align, Container};
+use druid::widget::{Button, Flex, WidgetExt, Label, CrossAxisAlignment, TextBox, Controller, SvgData, Svg};
 use native_dialog::{FileDialog, MessageDialog};
-use druid::{EventCtx, Event, KbKey, Widget, Color, Selector, FontWeight};
+use druid::{EventCtx, Event, KbKey, Widget, Color, Selector};
 use druid::widget::prelude::*;
 use std::str::FromStr;
 use druid::Point;
@@ -96,7 +96,7 @@ impl Widget<MainState> for IconButton {
 
         if self.main_button {
             let icon_size = Size::new(120.0, 45.0); 
-            let label_size = Size::new(140.0, 45.0); 
+            let _label_size = Size::new(140.0, 45.0); 
             Size::new(icon_size.width + 50.0, icon_size.height)
 
         } else {
@@ -216,7 +216,7 @@ pub fn initial_layout() -> impl Widget<MainState> {
                 .with_child(IconButton::new(full_screenshot_icon, "Capture fullscreen".to_string(), FULLSCREEN, true));
     
     let cop = Label::new(|_data: &MainState, _env: &_| {
-                    format!("ScreenGrabber by: Pietro, Kevin, Salvatore")}).with_text_color(Color::BLACK);
+                    format!("SnipGrab by: Pietro & Kevin")}).with_text_color(Color::BLACK);
 
     let function_column = Flex::column()
         .with_flex_child(snip, 1.0)

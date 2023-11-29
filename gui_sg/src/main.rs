@@ -1,5 +1,4 @@
-use std::borrow::Cow;
-use druid::{ExtEventSink, Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt, WindowId};
+use druid::{ExtEventSink, Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt};
 use druid::widget::{Either, BackgroundBrush};
 use std::process::Command;
 use screenshots::Screen;
@@ -9,8 +8,6 @@ use custom_widgets::{initial_layout, save_path_layout, shortcut_layout};
 
 mod utils;
 use utils::read_config_file;
-use arboard::{Clipboard, ImageData};
-use image::GenericImageView;
 
 use overlay_process::utils::capture_full_screen_screenshot;
 
@@ -50,7 +47,7 @@ fn main() {
 
     // Create the main window
     let main_window = WindowDesc::new(build_ui())
-        .title(LocalizedString::new("Snip grabber"))
+        .title(LocalizedString::new("SnipGrab"))
         .window_size((400.0, 400.0))
         .resizable(false);
 
@@ -141,7 +138,12 @@ impl druid::AppDelegate<MainState> for Delegate {
         } else if cmd.is(FULLSCREEN){
             println!("capturing fullscreen");
             let screens = Screen::all().unwrap();
-            capture_full_screen_screenshot(Some(screens[0]), true);
+            match capture_full_screen_screenshot(Some(screens[0]), true){
+                Ok(_) => {println!("Screenshot captured");}
+                Err(err) => {
+                    eprintln!("Error capturing screenshot: {}", err); //TODO GESTIRE MEGLIO QUEST'ERRORE
+                }
+            }
            Handled::Yes
         } else {Handled::No}
     }

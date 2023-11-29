@@ -11,31 +11,31 @@ use native_dialog::MessageType;
 
 mod overlay;
 use overlay::*;
-use image::{load_from_memory};
+use image::load_from_memory;
 
 mod utils;
 use utils::{compute_window_size, capture_screenshot, show_message_box};
 
 const SAVE_ICON_DATA: &[u8] = include_bytes!("../../icons/save-icon.png");
 const QUIT_ICON_DATA: &[u8] = include_bytes!("../../icons/quit-icon.png");
-const EDIT_ICON_DATA: &[u8] = include_bytes!("../../icons/edit-icon.png");
+const DELAY_ICON_DATA: &[u8] = include_bytes!("../../icons/delay-icon.png");
 
 pub struct IconData {
     save_icon: Vec<u8>,  
     quit_icon: Vec<u8>,  
-    edit_icon: Vec<u8>,
+    delay_icon: Vec<u8>,
 }
 
 fn initialize_icons() -> anyhow::Result<IconData> {
 
     let save_icon = load_from_memory(SAVE_ICON_DATA).context("Failed to load save icon")?;
     let quit_icon= load_from_memory(QUIT_ICON_DATA).context("Failed to load quit icon")?;
-    let edit_icon = load_from_memory(EDIT_ICON_DATA).context("Failed to load edit icon")?;
+    let delay_icon = load_from_memory(DELAY_ICON_DATA).context("Failed to load delay icon")?;
 
     Ok(IconData {
         save_icon: save_icon.to_rgb8().to_vec(),
         quit_icon: quit_icon.to_rgb8().to_vec(),
-        edit_icon: edit_icon.to_rgb8().to_vec(),
+        delay_icon: delay_icon.to_rgb8().to_vec(),
     })
     
 }
