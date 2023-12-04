@@ -1,15 +1,18 @@
 //internal dependencies
 
-use crate::{MainState, RUN_IN_BACKGROUND, LAUNCH_OVERLAY, PATH_GUI, SHORTCUT_GUI, HOME, FULLSCREEN};
+use crate::{MainState, RUN_IN_BACKGROUND, LAUNCH_OVERLAY, PATH_GUI, SHORTCUT_GUI, HOME, FULLSCREEN, DELAY};
 use crate::utils::{save_to_config_file, ShortcutValidation, validate_shortcuts};
 
 //external dependencies
 
 use druid::widget::{Button, Flex, WidgetExt, Label, CrossAxisAlignment, TextBox, Controller, SvgData, Svg};
 use native_dialog::{FileDialog, MessageDialog};
-use druid::{EventCtx, Event, KbKey, Widget, Color, Selector};
+use druid::{EventCtx, Event, KbKey, Widget, Color, Selector, Menu, LocalizedString, MenuItem, Target};
 use druid::widget::prelude::*;
+use std::any::Any;
 use std::str::FromStr;
+use std::sync::mpsc;
+use std::thread;
 use druid::Point;
 use druid::Rect;
 use druid::piet::{Text,TextLayoutBuilder};
@@ -21,7 +24,7 @@ const SHORTCUT_ICON_SVG: &str = include_str!("./icons/keyboard-icon.svg");
 const SCREENSHOT_ICON_SVG: &str = include_str!("./icons/snip-icon.svg");
 const BACKGROUND_ICON_SVG: &str = include_str!("./icons/background-icon.svg");
 const FULLSCREEN_ICON_SVG: &str = include_str!("./icons/fullscreen-icon.svg");
-
+const DELAY_ICON_SVG: &str = include_str!("./icons/delay-icon.svg");
 
 
 fn show_message_box(title: &str, message: &str) {
@@ -39,22 +42,91 @@ struct IconButton {
     main_button: bool,
 }
 
+
+
 impl IconButton {
     fn new(icon: SvgData, label: String, command: Selector, main_button: bool) -> Self {
         Self {
             icon,
             label,
             command,
-            main_button
+            main_button,
         }
     }
     fn layout_bounds(&self, origin: Point, size: Size) -> Rect {
         Rect::from_origin_size(origin, size)
     }
+
+    fn show_delay_menu(&self, ctx: &mut EventCtx, mouse_pos: Point, data:  &mut MainState) {
+        // Create a channel and store the sender in menu_channel
+        let (tx, rx) = mpsc::channel();
+        let tx1 = tx.clone();
+        let tx2 = tx.clone();
+        let tx3 = tx.clone();
+
+        let mut s0 = "no delay";
+        let mut s1 = "1 second delay";
+        let mut s3 = "3 second delay";
+        let mut s5 = "5 second delay";
+
+        match data.delay_state {
+            0 => {s0 = "Current: no delay"}
+            1 => {s1 = "Current: 1 second delay"}
+            3 => {s3 = "Current: 3 second delay"}
+            5 => {s5 = "Current: 5 second delay"}
+            _ => {}
+        }
+
+        let base: Menu<MainState> = Menu::empty();
+        let delay_menu = base.entry(
+            Menu::new(LocalizedString::new("Delay"))
+                .entry(MenuItem::new(LocalizedString::new(s0)).on_activate(move |_, _, _| {
+                    tx3.send(0 as u32).unwrap();
+                }))
+                .entry(MenuItem::new(LocalizedString::new(s1)).on_activate(move |_, _, _| {
+                    tx.send(1 as u32).unwrap();
+                }))
+                .entry(MenuItem::new(LocalizedString::new(s3)).on_activate(move |_, _, _| {
+                    tx1.send(3 as u32).unwrap();
+                }))
+                .entry(MenuItem::new(LocalizedString::new(s5)).on_activate(move |_, _, _| {
+                    tx2.send(5 as u32).unwrap();
+                })),
+        );
+
+        // Show the menu at the mouse position
+        let adjusted_pos = Point::new(mouse_pos.x + 350.0, mouse_pos.y);
+        ctx.show_context_menu(delay_menu, adjusted_pos);
+
+        // Spawn a thread to wait for messages and handle them
+        let ext_event_sink = ctx.get_external_handle();
+
+        thread::spawn(move || {
+            // This will block until a message is received
+            let received_command = match rx.recv() {
+                Ok(cmd) => cmd,
+                Err(err) => {//gestire meglio questo errore TODO
+                    eprintln!("User did not select anything");
+                    10
+                }
+            };
+            match received_command {
+                0 | 1 | 3 | 5 => {
+                    ext_event_sink
+                        .submit_command(DELAY, received_command, Target::Global)
+                        .expect("Failed to submit DELAY command");
+                }
+                _ => {
+                    // Handle unknown command
+                }
+            }
+        });      
+    }
+
 }
 
 impl Widget<MainState> for IconButton {
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut MainState, _env: &Env) {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut MainState, _env: &Env) {
         match event {
             Event::MouseDown(mouse_event) => {
                 if mouse_event.button == MouseButton::Left && !ctx.is_handled() {
@@ -64,8 +136,12 @@ impl Widget<MainState> for IconButton {
                     if hit_test_result {
                         // Handle the onclick event here.
                         // For example, you can submit a command when the IconButton is clicked.
-                       
-                        ctx.submit_command(self.command);
+                        if self.label == "Delay" {
+                            self.show_delay_menu(ctx, mouse_event.pos, data);
+                        } else {
+                            ctx.submit_command(self.command);
+
+                        }
                         ctx.set_active(true);
                         ctx.request_paint();
                     }
@@ -141,7 +217,11 @@ impl Widget<MainState> for IconButton {
             } else if label_text == "Shortcuts" {
                 offset_x = 1.0;
                 offset_y = 6.0;
-            } else {
+            } else if label_text == "Delay" {
+                offset_x = 8.0;
+                offset_y = 6.0;
+            }
+            else {
                 offset_x = 0.0;
                 offset_y = 0.0;
             }
@@ -188,14 +268,18 @@ pub fn create_button_row() -> impl Widget<MainState> {
 
     let home_icon_svg: SvgData = SvgData::from_str(HOME_ICON_SVG_STR).expect("failed");
     let save_icon_svg: SvgData = SvgData::from_str(SAVEPATH_ICON_SVG).expect("failed");
-    let shortcut_icon_svg: SvgData = SvgData::from_str(SHORTCUT_ICON_SVG).expect("failed");
+    let shortcut_icon_svg: SvgData = SvgData::from_str(SHORTCUT_ICON_SVG).expect("failed"); 
+    let delay_icon = SvgData::from_str(DELAY_ICON_SVG).expect("failed");
+
 
     Flex::row()
         .with_child(IconButton::new(home_icon_svg, "Home".to_string(), HOME, false))
-        .with_spacer(80.0)
+        .with_spacer(60.0)
         .with_child(IconButton::new(save_icon_svg, "Path".to_string(), PATH_GUI, false))
-        .with_spacer(80.0)
+        .with_spacer(60.0)
         .with_child(IconButton::new(shortcut_icon_svg, "Shortcuts".to_string(), SHORTCUT_GUI, false))
+        .with_spacer(60.0)
+        .with_child(IconButton::new(delay_icon, "Delay".to_string(), HOME, false))
         .padding(10.0)
         //.background(Color::BLACK)
 }

@@ -115,6 +115,13 @@ fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut
 }
 
 pub fn main(){
+
+    println!("Welcome to My Rust Program!");
+    println!("This is a guide.");
+    println!("It has multiple lines.");
+    println!("You can customize this with your own messages.");
+
+    
     let config_file_path = std::path::Path::new("../config/config.txt");
     let mut shortcut_string = "ctrl + k".to_string(); //default value to be override
     let mut shortcut_fs = "ctrl + f".to_string();
