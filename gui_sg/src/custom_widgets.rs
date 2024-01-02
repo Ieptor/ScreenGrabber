@@ -65,21 +65,20 @@ impl IconButton {
         let tx3 = tx.clone();
 
         let mut s0 = "no delay";
-        let mut s1 = "1 second delay";
-        let mut s3 = "3 second delay";
-        let mut s5 = "5 second delay";
+        let mut s1 = "1s";
+        let mut s3 = "3s";
+        let mut s5 = "5s";
 
         match data.delay_state {
-            0 => {s0 = "Current: no delay"}
-            1 => {s1 = "Current: 1 second delay"}
-            3 => {s3 = "Current: 3 second delay"}
-            5 => {s5 = "Current: 5 second delay"}
+            0 => {s0 = "● no delay"}
+            1 => {s1 = "● 1s"}
+            3 => {s3 = "● 3s"}
+            5 => {s5 = "● 5s"}
             _ => {}
         }
 
-        let base: Menu<MainState> = Menu::empty();
-        let delay_menu = base.entry(
-            Menu::new(LocalizedString::new("Delay"))
+        let base: Menu<MainState> = Menu::new(LocalizedString::new("Delay"));
+        let delay_menu = base
                 .entry(MenuItem::new(LocalizedString::new(s0)).on_activate(move |_, _, _| {
                     tx3.send(0 as u32).unwrap();
                 }))
@@ -91,8 +90,8 @@ impl IconButton {
                 }))
                 .entry(MenuItem::new(LocalizedString::new(s5)).on_activate(move |_, _, _| {
                     tx2.send(5 as u32).unwrap();
-                })),
-        );
+                }));
+        
 
         // Show the menu at the mouse position
         let adjusted_pos = Point::new(mouse_pos.x + 350.0, mouse_pos.y);

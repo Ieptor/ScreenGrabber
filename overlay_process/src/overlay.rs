@@ -8,6 +8,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use crate::IconData;
+use std::process::Command;
 
 
 #[derive(PartialEq, Debug)]
@@ -22,7 +23,7 @@ pub struct ScreenshotOverlay {
     screen: Option<Screen>,
     overlay_state: OverlayState,
     icon_data: IconData,
-    selecting_delay: bool, 
+    refining: bool,
 }
 
 impl ScreenshotOverlay {
@@ -34,7 +35,7 @@ impl ScreenshotOverlay {
             screen: None,
             overlay_state: OverlayState::Selecting,
             icon_data,
-            selecting_delay: false,
+            refining: false
         }
     }
 
@@ -63,9 +64,6 @@ impl ScreenshotOverlay {
     pub fn hide_buttons(&mut self) {
         self.overlay_state = OverlayState::Selecting;
     }*/
-
-
-    
 }
 
 const SELECT_AREA: Selector<()> = Selector::new("select-area");
@@ -89,35 +87,79 @@ impl AppState {
 
 trait IsInsideRect {
     fn is_inside_rect(&self, origin: Point, size: Size) -> bool;
+    fn rect_inside_rect(&self, rect: Rect) -> bool;
 }
 
 impl IsInsideRect for Point {
     fn is_inside_rect(&self, origin: Point, size: Size) -> bool {
         self.x >= origin.x && self.x <= origin.x + size.width && self.y >= origin.y && self.y <= origin.y + size.height
     }
+
+    fn rect_inside_rect(&self, rect: Rect) -> bool {
+        self.x <= rect.x0
+            && self.x >= rect.x1
+            && self.y >= rect.y0
+            && self.y <= rect.y1
+    }
 }
 
-const BUTTON_A_CLICKED: Selector<()> = Selector::new("button-a-clicked");
-const BUTTON_B_CLICKED: Selector<()> = Selector::new("button-b-clicked");
-const BUTTON_C_CLICKED: Selector<()> = Selector::new("button-c-clicked");
 
-fn get_clicked_button(mouse_pos: Point, screen: Screen, data: &AppState) -> Option<Selector> {
+#[derive(Debug, Clone, Copy)]
+struct SelectorWithPoint {
+    selector: Selector<()>,
+    point: Point,
+}
+
+const SAVE_BUTTON: Selector<()> = Selector::new("save-button_clicked");
+const BACK_BUTTON: Selector<()> = Selector::new("back-clicked");
+const CORNERS_BUTTON: Selector<()> = Selector::new("angles-clicked");
+
+
+fn get_clicked_button(mouse_pos: Point, screen: Screen, data: &AppState) -> Option<SelectorWithPoint> {
     let icon_size = Size::new(32.0, 32.0);
-    let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
+    let (left_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
+    let corners = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
 
     if mouse_pos.is_inside_rect(left_button_origin, icon_size) {
-        Some(BUTTON_A_CLICKED)
-    } else if mouse_pos.is_inside_rect(middle_button_origin, icon_size) {
-        Some(BUTTON_B_CLICKED)
+        Some(SelectorWithPoint {
+            selector: SAVE_BUTTON,
+            point: mouse_pos,
+        })
     } else if mouse_pos.is_inside_rect(right_button_origin, icon_size) {
-        Some(BUTTON_C_CLICKED)
+        Some(SelectorWithPoint {
+            selector: BACK_BUTTON,
+            point: mouse_pos,
+        })
+    } else if mouse_pos.rect_inside_rect(corners[0]) || mouse_pos.rect_inside_rect(corners[4]) {
+        println!("bottom left corner clicked");
+        Some(SelectorWithPoint {
+            selector: CORNERS_BUTTON,
+            point: mouse_pos,
+        })
+    } else if mouse_pos.rect_inside_rect(corners[1]) || mouse_pos.rect_inside_rect(corners[6]) {
+        println!("bottom right corner clicked");
+        Some(SelectorWithPoint {
+            selector: CORNERS_BUTTON,
+            point: mouse_pos,
+        })
+    } else if mouse_pos.rect_inside_rect(corners[2]) || mouse_pos.rect_inside_rect(corners[5]) {
+        println!("top left corner clicked");
+        Some(SelectorWithPoint {
+            selector: CORNERS_BUTTON,
+            point: mouse_pos,
+        })
+    } else if mouse_pos.rect_inside_rect(corners[3]) || mouse_pos.rect_inside_rect(corners[7]) {
+        println!("top right corner clicked");
+        Some(SelectorWithPoint {
+            selector: CORNERS_BUTTON,
+            point: mouse_pos,
+        })
     } else {
         None
     }
 }
 
 impl Widget<AppState> for ScreenshotOverlay {
-
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
         match event {
             Event::MouseDown(mouse_event) => {
@@ -145,9 +187,9 @@ impl Widget<AppState> for ScreenshotOverlay {
                     let mouse_pos = mouse_event.pos;
                     if let Some(screen) = self.screen {
                         if let Some(button_clicked) = get_clicked_button(mouse_pos, screen, data) {
-                            match button_clicked {
-                                BUTTON_A_CLICKED => { // save screenshot functionality
-                                    println!("Button A clicked, sending message...");
+                            match button_clicked.selector {
+                                SAVE_BUTTON => { // save screenshot functionality
+                                    println!("Button A clicked, sending message for screenshot");
                                     if let Ok(mut tx) = data.capture_channel.lock() {
                                         if let Some(tx) = tx.take() {
                                             // Notify the main thread to capture the screenshot
@@ -159,56 +201,23 @@ impl Widget<AppState> for ScreenshotOverlay {
                                         }
                                     }
                                 },
-                                BUTTON_B_CLICKED => { // edit screenshot functionality
-                                    self.selecting_delay = true;
-                                    if let Ok(mut guard) = data.capture_channel.lock() {
-                                        if let Some(tx) = std::mem::replace(&mut *guard, None) {
-                                            // Notify the main thread to capture the screenshot
-                                            if let Some(screen) = self.screen {
-                                                let base: Menu<AppState> = Menu::empty();
-                                                let selection = data.selection.clone();
-
-                                                let tx_1 = tx.clone();
-                                                let tx_2 = tx.clone();
-                                                let tx_3: mpsc::Sender<(Rect, Screen, i32)> = tx.clone();
-
-                                                ctx.show_context_menu(base.entry(
-                                                    Menu::new(LocalizedString::new("Delay"))
-                                                        .entry(MenuItem::new(LocalizedString::new("1 seconds delay")).on_activate(move |_, _, _| {
-                                                            println!("1 second delay");
-                                                            thread::sleep(Duration::from_secs(1));
-                                                            tx_1.send((selection, screen, translation_factor)).expect("Failed to send message to main thread");
-                                                            Application::global().quit();
-                                                        }))
-                                                        .entry(MenuItem::new(LocalizedString::new("3 seconds delay")).on_activate(move |_, _, _| {
-                                                            println!("3 seconds delay");
-                                                            thread::sleep(Duration::from_secs(3));
-                                                            tx_2.send((selection, screen, translation_factor)).expect("Failed to send message to main thread");
-                                                            Application::global().quit();
-                                                        }))
-                                                        .entry(MenuItem::new(LocalizedString::new("5 seconds delay")).on_activate(move |_, _, _| {
-                                                            println!("5 seconds delay");
-                                                            thread::sleep(Duration::from_secs(5));
-                                                            tx_3.send((selection, screen, translation_factor)).expect("Failed to send message to main thread");
-                                                            Application::global().quit();
-                                                        })),
-                                                ), mouse_pos);
-                                                self.selecting_delay = false;
-                                                *guard = Some(tx);
-                                            }
-                                        }
-                                    }
+                                BACK_BUTTON => { // exit
+                                    println!("Closing overlay");
+                                    Application::global().quit();
+                                    let _ = Command::new(r"..\gui_sg\target\release\gui_sg.exe")
+                                            .spawn()
+                                            .expect("Failed to start overlay process");
                                 },
-                                BUTTON_C_CLICKED => { // exit
-                                    Application::global().quit();}
-                                _ => {}
+                                CORNERS_BUTTON => {
+                                    //IF CORNER IS CLICKED, MAKE IT THE NEW STARTING POINT FOR DRAGGING and start painting in refining area
+                                    self.refining = true;
+                                    self.start_point = Some(button_clicked.point);
+                                }
+                                _ => {println!("A")}
                             }
                             ctx.set_handled();
                         } else {
-                            if self.selecting_delay == false {
-                                self.start_point = Some(mouse_event.pos);
-                            }
-                            //self.hide_buttons();
+                            self.start_point = Some(mouse_event.pos);
                         }
                     }
                 } else {
@@ -216,35 +225,31 @@ impl Widget<AppState> for ScreenshotOverlay {
                 }
                 ctx.set_active(true);
                 ctx.set_handled();
-
             }
 
             Event::MouseUp(mouse_event) => {
-                if self.selecting_delay == false {
-                    self.end_point = Some(mouse_event.pos);
+               
+                self.end_point = Some(mouse_event.pos);
                 
-                    ctx.set_active(false);
-                    ctx.submit_command(SELECT_AREA.to_owned());
-                    ctx.set_handled();
+                ctx.set_active(false);
+                ctx.submit_command(SELECT_AREA.to_owned());
+                ctx.set_handled();
 
-                    self.show_buttons();
-                    ctx.request_paint();
+                self.refining = false;
+                self.show_buttons();
+                ctx.request_paint();
             }
 
-            }
             Event::MouseMove(mouse_event) => {
                 if ctx.is_active() {
                     if let Some(start) = self.start_point {
-                        if self.selecting_delay == false {
-                            self.end_point = Some(mouse_event.pos);
-                            let selection = Rect::from_points(start, mouse_event.pos);
-                            data.selection = selection;
-                            ctx.request_paint();
-                        }
+                        self.end_point = Some(mouse_event.pos);
+                        let selection = Rect::from_points(start, mouse_event.pos);
+                        data.selection = selection;
+                        ctx.request_paint();
                     }
                 }
             }
-
             _ => (),
         }
     }
@@ -257,38 +262,44 @@ impl Widget<AppState> for ScreenshotOverlay {
         let border_color = Color::rgba(1.0, 1.0, 1.0, 0.5);
         let edge_color = Color::rgba(1.0, 1.0, 1.0, 1.0);
 
-
-        // paint border
-        let borders = create_border_rectangles(data.selection, 3.0);
-        for border in borders {
-            ctx.fill(border, &border_color);
-        }
-
-        // paint selection
-        let result = surrounding_rectangles(size.to_rect().clone(), data.selection.clone());
-        for element in result {
+     
+    
+        //if user is refining an already selected area:
+        if self.refining {
+            
+          
+        } 
+        else {
+            // paint selection
+            let result = surrounding_rectangles(size.to_rect().clone(), data.selection.clone());
+            for element in result {
             ctx.fill(element, &bg_color);
-        }
-        ctx.fill(data.selection, &selection_color);
+            }
+            ctx.fill(data.selection, &selection_color);
 
-        if data.selection.area() > 0.0 {
-            // paint edges
-            let edges = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
-            for edge in edges {
-                ctx.fill(edge, &edge_color);
+            let borders = create_border_rectangles(data.selection, 3.0);
+            for border in borders {
+            ctx.fill(border, &border_color);
+            }
+         
+            if data.selection.area() > 0.0 {
+                // paint edges
+                let edges = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
+                for edge in edges {
+                    ctx.fill(edge, &edge_color);
+                } 
             }
         }
 
         if self.overlay_state == OverlayState::ButtonsShown {
-
-
             if let Some(screen) = self.screen {
                 let icon_size = Size::new(32.0, 32.0);
 
-                let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
+                //let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
+                let (left_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
 
                 let left_button_rect = Rect::from_origin_size(left_button_origin, icon_size);
-                let middle_button_rect = Rect::from_origin_size(middle_button_origin, icon_size);
+                //let middle_button_rect = Rect::from_origin_size(middle_button_origin, icon_size);
                 let right_button_rect = Rect::from_origin_size(right_button_origin, icon_size);
 
                 let image = ctx
@@ -296,15 +307,17 @@ impl Widget<AppState> for ScreenshotOverlay {
                     .unwrap();
                 ctx.draw_image(&image, left_button_rect, InterpolationMode::Bilinear);
 
+                /*
                 let image = ctx
                     .make_image(32, 32, &self.icon_data.delay_icon, ImageFormat::Rgb)
                     .unwrap();
-                ctx.draw_image(&image, middle_button_rect, InterpolationMode::Bilinear);
-
+                ctx.draw_image(&image, middle_button_rect, InterpolationMode::Bilinear);*/
+            
                 let image = ctx
                     .make_image(32, 32, &self.icon_data.quit_icon, ImageFormat::Rgb)
                     .unwrap();
                 ctx.draw_image(&image, right_button_rect, InterpolationMode::Bilinear);
+
             }
        }
     }
@@ -325,11 +338,9 @@ impl Widget<AppState> for ScreenshotOverlay {
 
 }
 
-fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Point, Point, Point){
-
-
+fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Point, Point){
     let center = data.selection.center();
-    let button_spacing = 50.0;
+    let button_spacing = 30.0; //50.0 if 3 buttons
 
     let space_below = screen.display_info.height as f64 - data.selection.y1;
     let mut vertical_offset = data.selection.y1 + button_spacing;
@@ -341,10 +352,11 @@ fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Poi
     }
 
     let left_button_origin = Point::new(center.x - icon_size.width - button_spacing, vertical_offset);
-    let middle_button_origin = Point::new(center.x - icon_size.width / 2.0, vertical_offset);
+    //let middle_button_origin = Point::new(center.x - icon_size.width / 2.0, vertical_offset);
     let right_button_origin = Point::new(center.x + button_spacing, vertical_offset);
 
-    (left_button_origin, middle_button_origin, right_button_origin)
+    //(left_button_origin, middle_button_origin, right_button_origin)
+    (left_button_origin, right_button_origin)
 }
 
 fn surrounding_rectangles(a: Rect, b: Rect) -> Vec<Rect> {

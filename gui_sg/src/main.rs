@@ -119,7 +119,7 @@ impl druid::AppDelegate<MainState> for Delegate {
 
             thread::sleep(Duration::from_secs(data.delay_state as u64));
             // Launch the overlay binary as a new process
-            let _ = Command::new(r"..\overlay_process\release\overlay_process.exe")
+            let _ = Command::new(r"..\overlay_process\target\release\overlay_process.exe")
                 .spawn()
                 .expect("Failed to start overlay process");
             Handled::Yes
@@ -142,7 +142,7 @@ impl druid::AppDelegate<MainState> for Delegate {
             Application::global().quit();
             //run the background shortcut listener
             let _ = Command::new("cmd")
-                .args(&["/C", "start", r"..\background_listener\release\background_listener.exe"])
+                .args(&["/C", "start", r"..\background_listener\target\release\background_listener.exe"])
                 .spawn()
                 .expect("Failed to start background listener");
                     

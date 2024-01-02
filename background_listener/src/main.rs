@@ -114,14 +114,7 @@ fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut
 }
 }
 
-pub fn main(){
-
-    println!("Welcome to My Rust Program!");
-    println!("This is a guide.");
-    println!("It has multiple lines.");
-    println!("You can customize this with your own messages.");
-
-    
+pub fn main(){   
     let config_file_path = std::path::Path::new("../config/config.txt");
     let mut shortcut_string = "ctrl + k".to_string(); //default value to be override
     let mut shortcut_fs = "ctrl + f".to_string();
@@ -135,6 +128,13 @@ pub fn main(){
             eprintln!("Error reading config file");
         }
     }
+
+    println!("   _       ,/'");
+    println!("  (_).  ,/'       Welcome to SnipGrab by Pietro and Kevin.");
+    println!("   _  ::          Right now the software is running in background!");
+    println!("  (_)'  `\\.        - Click ({:}) hotkey to open the screenshot overlay", shortcut_string);
+    println!("          '\\.      - Click ({:}) hotkey to do a fullscreen screenshot", shortcut_fs);
+    println!("You can close the application by closing this terminal.");
     
     let shortcut_command = parse_hotkey(shortcut_string.clone());
     let shortcutfs_command = parse_hotkey(shortcut_fs.clone());
