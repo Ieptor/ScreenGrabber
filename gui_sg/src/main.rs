@@ -153,7 +153,12 @@ impl druid::AppDelegate<MainState> for Delegate {
 
             thread::sleep(Duration::from_secs(data.delay_state as u64));
             match capture_full_screen_screenshot(Some(screens[0]), true){
-                Ok(_) => {println!("Screenshot captured");}
+                Ok(_) => {
+                    println!("Screenshot captured");
+                    let _ = Command::new(r"..\edit_gui\target\release\edit_gui.exe")
+                    .spawn()
+                    .expect("Failed to start process");
+                }
                 Err(err) => {
                     eprintln!("Error capturing screenshot: {}", err); //TODO GESTIRE MEGLIO QUEST'ERRORE
                 }

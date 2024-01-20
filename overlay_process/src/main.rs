@@ -1,6 +1,6 @@
 use druid::{AppLauncher, LocalizedString, WindowDesc, Size, Rect};
 use screenshots::Screen;
-
+use std::process::Command;
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::Mutex;
@@ -69,7 +69,12 @@ fn run_overlay() -> anyhow::Result<()> {
             //selection.x0 = selection.x0 - translation_factor.abs() as f64;
             //selection.x1 = selection.x1 - translation_factor.abs() as f64;
             match capture_screenshot(selection, Some(screen)) {
-                Ok(_) => { show_message_box("Info", "Image successfully saved!", MessageType::Info) }
+                Ok(_) => { 
+                    show_message_box("Info", "Image successfully saved!", MessageType::Info);
+                    let _ = Command::new(r"..\edit_gui\target\release\edit_gui.exe")
+                    .spawn()
+                    .expect("Failed to start process");            
+                }
                 Err(err) => { show_message_box("Error", &err.to_string(), MessageType::Error) }
             }
         },

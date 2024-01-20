@@ -1,0 +1,12 @@
+C:\Users\pganc\Desktop\Nuova cartella\ScreenGrabber\edit_gui\target\release\deps\libunicode_general_category-bb8f5a1e2f6b6fc7.rmeta: C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\lib.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\category.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\tables.rs C:\Users\pganc\Desktop\Nuova\ cartella\ScreenGrabber\edit_gui\target\release\build\unicode-general-category-d965329ade1e15d6\out/category.rs
+
+C:\Users\pganc\Desktop\Nuova cartella\ScreenGrabber\edit_gui\target\release\deps\libunicode_general_category-bb8f5a1e2f6b6fc7.rlib: C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\lib.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\category.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\tables.rs C:\Users\pganc\Desktop\Nuova\ cartella\ScreenGrabber\edit_gui\target\release\build\unicode-general-category-d965329ade1e15d6\out/category.rs
+
+C:\Users\pganc\Desktop\Nuova cartella\ScreenGrabber\edit_gui\target\release\deps\unicode_general_category-bb8f5a1e2f6b6fc7.d: C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\lib.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\category.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\tables.rs C:\Users\pganc\Desktop\Nuova\ cartella\ScreenGrabber\edit_gui\target\release\build\unicode-general-category-d965329ade1e15d6\out/category.rs
+
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\lib.rs:
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\category.rs:
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\unicode-general-category-0.6.0\src\tables.rs:
+C:\Users\pganc\Desktop\Nuova\ cartella\ScreenGrabber\edit_gui\target\release\build\unicode-general-category-d965329ade1e15d6\out/category.rs:
+
+# env-dep:OUT_DIR=C:\\Users\\pganc\\Desktop\\Nuova cartella\\ScreenGrabber\\edit_gui\\target\\release\\build\\unicode-general-category-d965329ade1e15d6\\out

@@ -1,0 +1,11 @@
+C:\Users\pganc\Desktop\Nuova cartella\ScreenGrabber\edit_gui\target\release\deps\liblibc-56438e9b30e4f29c.rmeta: C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\lib.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\macros.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\fixed_width_ints.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\mod.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\msvc\mod.rs
+
+C:\Users\pganc\Desktop\Nuova cartella\ScreenGrabber\edit_gui\target\release\deps\liblibc-56438e9b30e4f29c.rlib: C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\lib.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\macros.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\fixed_width_ints.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\mod.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\msvc\mod.rs
+
+C:\Users\pganc\Desktop\Nuova cartella\ScreenGrabber\edit_gui\target\release\deps\libc-56438e9b30e4f29c.d: C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\lib.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\macros.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\fixed_width_ints.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\mod.rs C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\msvc\mod.rs
+
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\lib.rs:
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\macros.rs:
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\fixed_width_ints.rs:
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\mod.rs:
+C:\Users\pganc\.cargo\registry\src\index.crates.io-6f17d22bba15001f\libc-0.2.152\src\windows\msvc\mod.rs:
