@@ -69,9 +69,10 @@ fn run_overlay() -> anyhow::Result<()> {
             //selection.x0 = selection.x0 - translation_factor.abs() as f64;
             //selection.x1 = selection.x1 - translation_factor.abs() as f64;
             match capture_screenshot(selection, Some(screen)) {
-                Ok(_) => { 
+                Ok(path) => { 
                     show_message_box("Info", "Image successfully saved!", MessageType::Info);
                     let _ = Command::new(r"..\edit_gui\target\release\edit_gui.exe")
+                    .arg(&path)
                     .spawn()
                     .expect("Failed to start process");            
                 }

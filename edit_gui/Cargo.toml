@@ -6,4 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-druid = { version = "0.8.3", features = ["svg"] }
+druid = { version = "0.8.3"}
+image = "0.23.14"
+native-dialog = "0.6.4"
+anyhow = "1.0.75"
+overlay_process = { path = "../overlay_process" }
+kurbo = "0.5"
+screenshots = "0.6.0"

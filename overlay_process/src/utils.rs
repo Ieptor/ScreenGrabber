@@ -4,6 +4,7 @@ use screenshots::Screen;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::path::PathBuf;
 use image::{ImageFormat, RgbImage, GenericImageView};
 use anyhow::{Result, anyhow};
 
@@ -34,7 +35,7 @@ pub fn compute_window_size()-> anyhow::Result<(i32, i32, i32, i32)> {
     Ok((width, height, leftmost, topmost))
 }
 
-pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>) -> Result<()> {
+pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>) -> Result<PathBuf> {
 
     // build a Vec<Screen> without the screens we are sure are not needed
     let initial_screen = screen.ok_or(anyhow!("No screen found"))?;
@@ -108,18 +109,17 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>) -> Result
     if screenshots.len() > 1 {
         // *************************************** merge all the screenshots ***************************************
         let image = from_multiple_image_to_single_image(screenshots)?;
-        handle_save_screenshot(image)?;
+        handle_save_screenshot(image)
     } else {
         // *************************************** save only one screenshot ***************************************
         let image = screenshots.pop().ok_or(anyhow!("No screenshot available"))?;
-        handle_save_screenshot(image)?;
+        handle_save_screenshot(image)
     }
 
-    Ok(())
 }
 
 
-pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool) -> Result<()> {
+pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool) -> Result<PathBuf> {
     let screen_shoot: Image;
 
     if all_screens {
@@ -137,9 +137,8 @@ pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool)
         screen_shoot = selected_screen.capture().context("Failed to capture screen")?;
     }
 
-    handle_save_screenshot(screen_shoot)?;
-
-    Ok(())
+    handle_save_screenshot(screen_shoot)
+    //Ok(())
 }
 
 fn read_config_file_savepath(file_path: &Path) -> anyhow::Result<String> {
@@ -155,7 +154,7 @@ fn read_config_file_savepath(file_path: &Path) -> anyhow::Result<String> {
     Err(anyhow::anyhow!("Config file is empty"))
 } 
 
-fn handle_save_screenshot(screen_shoot: Image) -> Result<()> {
+fn handle_save_screenshot(screen_shoot: Image) -> Result<PathBuf> {
     let path_str = Path::new("../config/config.txt");
     let path = read_config_file_savepath(path_str)
         .context("Failed to read the configuration file")?;
@@ -191,7 +190,7 @@ fn handle_save_screenshot(screen_shoot: Image) -> Result<()> {
         // Salva negli appunti
         save_into_clipboard(output_path).context("Error copying into the clipboard")?;
 
-        return Ok(());
+        return Ok(output_path.to_path_buf());
 
     } else {
         //show_message_box("Error", "Select a folder!", MessageType::Info);
@@ -201,7 +200,7 @@ fn handle_save_screenshot(screen_shoot: Image) -> Result<()> {
 }
 
 
-fn save_into_clipboard(output_path: &Path) -> anyhow::Result<()> {
+pub fn save_into_clipboard(output_path: &Path) -> anyhow::Result<()> {
     let mut clipboard = arboard::Clipboard::new()
         .context("Failed to initialize clipboard")?;
 

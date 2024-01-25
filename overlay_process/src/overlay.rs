@@ -213,7 +213,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                                     self.refining = true;
                                     self.start_point = Some(button_clicked.point);
                                 }
-                                _ => {println!("A")}
+                                _ => {}
                             }
                             ctx.set_handled();
                         } else {
