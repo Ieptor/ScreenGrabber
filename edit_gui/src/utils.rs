@@ -4,7 +4,6 @@ use anyhow::{Result, Context, bail};
 use native_dialog::{FileDialog};
 use std::path::{Path, PathBuf};
 use image::{Rgb, Rgba, RgbImage, RgbaImage, GenericImage};
-
 use overlay_process::utils::save_into_clipboard;
 
 pub fn resize_image(input_image: DynamicImage, target_size: (u32, u32)) -> DynamicImage {
@@ -53,38 +52,6 @@ pub fn save_edited_image(image: DynamicImage, path: &str) -> Result<PathBuf> {
     }
 }
 
-
-pub struct Stroke {
-    points: Vec<Point>,
-    color: Rgba<u8>,
-    width: u32,
-}
-
-impl Stroke {
-    pub fn new(points: Vec<Point>, color: Rgba<u8>, width: u32) -> Self {
-        Stroke { points, color, width }
-    }
-
-    pub fn draw(&self, size: (u32, u32)) -> RgbaImage {
-        let mut image = RgbaImage::new(size.0, size.1); 
-    
-        for point in &self.points {
-            for i in 0..self.width {
-                for j in 0..self.width {
-                    let x = point.x + (i as f64);
-                    let y = point.y + (j as f64);
-    
-                    if x < image.width().into() && y < image.height() as f64 {
-                        image.put_pixel(x as u32, y as u32, self.color);
-                    }
-                }
-            }
-        }
-    
-        image
-    }
-}
-
 pub fn blend_images(base: DynamicImage, overlay: DynamicImage) -> DynamicImage {
     let (width, height) = base.dimensions();
     let mut result = DynamicImage::new_rgba8(width, height);
@@ -108,4 +75,28 @@ pub fn blend_images(base: DynamicImage, overlay: DynamicImage) -> DynamicImage {
     }
 
     result
+}
+
+pub fn apply_scaling(scaling_factors: (f64, f64), points: Vec<Point>) -> Vec<Point> {
+    let (translation_x, translation_y) = scaling_factors;
+
+    let converted_points: Vec<Point> = points
+        .iter()
+        .map(|&point| Point::new(point.x + translation_x, point.y + translation_y))
+        .collect();
+
+    converted_points
+}
+
+pub fn apply_scaling_to_point(scaling_factors: (f64, f64), point: Point) -> Point {
+    let (translation_x, translation_y) = scaling_factors;
+    Point::new(point.x + translation_x, point.y + translation_y)
+}
+
+pub fn calculate_distance(point1: &Point, point2: &Point) -> f64 {
+    ((point2.x - point1.x).powi(2) + (point2.y - point1.y).powi(2)).sqrt()
+}
+
+pub fn calculate_radius(center: Point, point_on_circumference: Point) -> f64 {
+    calculate_distance(&center, &point_on_circumference)
 }

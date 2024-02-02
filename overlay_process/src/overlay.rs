@@ -228,7 +228,6 @@ impl Widget<AppState> for ScreenshotOverlay {
             }
 
             Event::MouseUp(mouse_event) => {
-               
                 self.end_point = Some(mouse_event.pos);
                 
                 ctx.set_active(false);
