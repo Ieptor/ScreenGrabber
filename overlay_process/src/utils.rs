@@ -7,6 +7,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use image::{ImageFormat, RgbImage, GenericImageView};
 use anyhow::{Result, anyhow};
+use std::env;
 
 extern crate clipboard;
 extern crate image;
@@ -155,8 +156,10 @@ fn read_config_file_savepath(file_path: &Path) -> anyhow::Result<String> {
 } 
 
 fn handle_save_screenshot(screen_shoot: Image) -> Result<PathBuf> {
-    let path_str = Path::new("../config/config.txt");
-    let path = read_config_file_savepath(path_str)
+
+    let path_str = get_config_file_path();
+
+    let path = read_config_file_savepath(&path_str)
         .context("Failed to read the configuration file")?;
 
     // Verifica se il percorso di salvataggio esiste
@@ -204,7 +207,7 @@ pub fn save_into_clipboard(output_path: &Path) -> anyhow::Result<()> {
     let mut clipboard = arboard::Clipboard::new()
         .context("Failed to initialize clipboard")?;
 
-    let image = image::open(output_path.clone())
+    let image = image::open(output_path)
         .with_context(|| format!("Error opening the image at {:?}", output_path))?;
 
     let img = arboard::ImageData {
@@ -259,4 +262,22 @@ pub fn show_message_box(title: &str, message: &str, mt: MessageType) {
         .set_type(mt) // info , warning, error
         .show_alert()
         .expect("Failed to show the message box.");
+}
+
+pub fn get_config_file_path() -> PathBuf {
+    let exe_dir = get_project_src_path();
+    let relative_path = exe_dir.join("config").join("config.txt");
+    relative_path
+}
+
+pub fn get_project_src_path() -> PathBuf {
+    let exe_path = env::current_exe().expect("Failed to get current executable path");
+
+    let mut exe_dir = exe_path.parent().expect("Failed to get parent directory");
+
+    for _ in 0..3 {
+        exe_dir = exe_dir.parent().expect("Failed to get parent directory");
+    }
+
+    exe_dir.to_path_buf()
 }

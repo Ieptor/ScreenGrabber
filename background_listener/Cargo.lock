@@ -1468,11 +1468,9 @@ dependencies = [
  "arboard",
  "clipboard",
  "druid",
- "druid-shell",
  "image 0.23.14",
  "native-dialog",
  "screenshots",
- "thiserror",
 ]
 
 [[package]]

@@ -14,28 +14,24 @@ use overlay::*;
 use image::load_from_memory;
 
 mod utils;
-use utils::{compute_window_size, capture_screenshot, show_message_box};
+use utils::{compute_window_size, capture_screenshot, show_message_box, get_project_src_path};
 
 const SAVE_ICON_DATA: &[u8] = include_bytes!("../../icons/save-icon.png");
 const QUIT_ICON_DATA: &[u8] = include_bytes!("../../icons/quit-icon.png");
-const DELAY_ICON_DATA: &[u8] = include_bytes!("../../icons/delay-icon.png");
 
 pub struct IconData {
     save_icon: Vec<u8>,  
     quit_icon: Vec<u8>,  
-    delay_icon: Vec<u8>,
 }
 
 fn initialize_icons() -> anyhow::Result<IconData> {
 
     let save_icon = load_from_memory(SAVE_ICON_DATA).context("Failed to load save icon")?;
     let quit_icon= load_from_memory(QUIT_ICON_DATA).context("Failed to load quit icon")?;
-    let delay_icon = load_from_memory(DELAY_ICON_DATA).context("Failed to load delay icon")?;
 
     Ok(IconData {
         save_icon: save_icon.to_rgb8().to_vec(),
         quit_icon: quit_icon.to_rgb8().to_vec(),
-        delay_icon: delay_icon.to_rgb8().to_vec(),
     })
     
 }
@@ -71,7 +67,9 @@ fn run_overlay() -> anyhow::Result<()> {
             match capture_screenshot(selection, Some(screen)) {
                 Ok(path) => { 
                     show_message_box("Info", "Image successfully saved!", MessageType::Info);
-                    let _ = Command::new(r"..\edit_gui\target\release\edit_gui.exe")
+                    let exe_path = get_project_src_path();
+                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                    let _ = Command::new(final_path)
                     .arg(&path)
                     .spawn()
                     .expect("Failed to start process");            

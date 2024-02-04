@@ -7,7 +7,7 @@ mod utils;
 use utils::read_config_file;
 use screenshots::Screen;
 use std::process::Command;
-use overlay_process::utils::capture_full_screen_screenshot;
+use overlay_process::utils::{capture_full_screen_screenshot, get_config_file_path};
 
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
@@ -73,8 +73,6 @@ pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 
 
 fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut_fs_command: Option<(Modifiers, Code)>) {
-   
-    
     if let Some((modifier, key1)) = shortcut_command {
         if let Some((modifier2, key2)) = shortcut_fs_command {
             let manager = GlobalHotKeyManager::new().unwrap();
@@ -98,12 +96,19 @@ fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut
 
                         if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
                             if event.id == id1 {
-                                let _ = Command::new(r"..\overlay_process\release\overlay_process.exe")
+                                let _ = Command::new(r"..\overlay_process\target\release\overlay_process.exe")
                                         .spawn()
                                         .expect("Failed to start overlay process");
                             } else if event.id == id2 {
                                 let screens = Screen::all().unwrap();
-                                capture_full_screen_screenshot(Some(screens[0]), true);
+                                match capture_full_screen_screenshot(Some(screens[0]), true) {
+                                    Ok(_) => {
+                                        println!("Screenshot captured successfully");
+                                    }
+                                    Err(err) => {
+                                        println!("Failed to capture screenshot: {}", err);
+                                    }
+                                }
                             }
                     }
                     
@@ -115,11 +120,11 @@ fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut
 }
 
 pub fn main(){   
-    let config_file_path = std::path::Path::new("../config/config.txt");
+    let config_path = get_config_file_path();
     let mut shortcut_string = "ctrl + k".to_string(); //default value to be override
     let mut shortcut_fs = "ctrl + f".to_string();
 
-    match read_config_file(config_file_path) {
+    match read_config_file(&config_path) {
         Ok((_, shortcut, fs)) => {
             shortcut_string = shortcut;
             shortcut_fs = fs

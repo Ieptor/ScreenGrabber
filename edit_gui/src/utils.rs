@@ -1,9 +1,9 @@
-use image::{load_from_memory, DynamicImage, GenericImageView};
-use druid::{ImageBuf, Point};
+use image::{DynamicImage, GenericImageView};
+use druid::{Point};
 use anyhow::{Result, Context, bail};
 use native_dialog::{FileDialog};
 use std::path::{Path, PathBuf};
-use image::{Rgb, Rgba, RgbImage, RgbaImage, GenericImage};
+use image::{Rgba, GenericImage};
 use overlay_process::utils::save_into_clipboard;
 
 pub fn resize_image(input_image: DynamicImage, target_size: (u32, u32)) -> DynamicImage {

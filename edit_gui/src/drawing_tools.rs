@@ -1,5 +1,5 @@
-use druid::{ImageBuf, Point};
-use image::{Rgb, Rgba, RgbImage, RgbaImage, GenericImage};
+use druid::{Point};
+use image::{Rgba, RgbaImage};
 
 pub struct Stroke {
     points: Vec<Point>,

@@ -1,7 +1,8 @@
 use druid::{AppLauncher, LocalizedString, WindowDesc};
-use image::{load_from_memory, DynamicImage, GenericImageView};
+use image::{load_from_memory, DynamicImage};
 use std::fs;
-use druid::{Color, Env};
+use std::path::Path;
+use druid::{Color};
 
 mod edit;
 use edit::*;
@@ -13,7 +14,8 @@ mod drawing_tools;
 
 pub struct ImageData {
     screenshot: DynamicImage,  
-    icons: Vec<DynamicImage>
+    icons: Vec<DynamicImage>,
+    directory: String,
 }
 
 const SAVE_ICON_DATA: &[u8] = include_bytes!("../../icons/save64-icon.png");
@@ -35,18 +37,39 @@ const YELLOW_ICON_DATA: &[u8] = include_bytes!("../../icons/giallo.png");
 
 const CHECKBOX_ICON_DATA: &[u8] = include_bytes!("../../icons/checkbox.png");
 
-
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     
-    /*
+    
     if args.len() < 2 {
         eprintln!("Usage: edit_gui <path>");
         std::process::exit(1);
     }
     let path = &args[1];
-    println!("Received argument: {}", path);*/
-    let path = r"C:\Users\pganc\Desktop\test.jpg";
+    println!("Received argument: {}", path);
+    
+    let file_path = Path::new(path);
+
+    let directory = file_path.parent().unwrap_or_else(|| {
+        eprintln!("Invalid path provided.");
+        std::process::exit(1);
+    });
+    let directory_str = directory.to_str().unwrap_or_else(|| {
+        eprintln!("Invalid path provided.");
+        std::process::exit(1);
+    });
+
+    /*
+    let file_name = file_path.file_name().unwrap_or_else(|| {
+        eprintln!("Invalid file name.");
+        std::process::exit(1);
+    });
+
+    let file_name_str = file_name.to_str().unwrap_or_else(|| {
+        eprintln!("Invalid file name.");
+        std::process::exit(1);
+    });*/
+
 
     let image_data = fs::read(path).expect("Error reading file");
     let dynamic_image = load_from_memory(&image_data).expect("failed to load image");
@@ -56,9 +79,7 @@ fn main() {
     let imgstrct = ImageData{
         screenshot: resized_image, 
         icons: icons_vec,
-        //text: text_icon,
-        //shapes: shape_icon,
-        //save: save_icon
+        directory: directory_str.to_string(),
     };
 
     let main_window = WindowDesc::new(Edit::new(imgstrct))

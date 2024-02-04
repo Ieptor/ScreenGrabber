@@ -9,7 +9,6 @@ use druid::widget::{Button, Flex, WidgetExt, Label, CrossAxisAlignment, TextBox,
 use native_dialog::{FileDialog, MessageDialog};
 use druid::{EventCtx, Event, KbKey, Widget, Color, Selector, Menu, LocalizedString, MenuItem, Target};
 use druid::widget::prelude::*;
-use std::any::Any;
 use std::str::FromStr;
 use std::sync::mpsc;
 use std::thread;
@@ -104,7 +103,7 @@ impl IconButton {
             // This will block until a message is received
             let received_command = match rx.recv() {
                 Ok(cmd) => cmd,
-                Err(err) => {//gestire meglio questo errore TODO
+                Err(_err) => {//gestire meglio questo errore TODO
                     eprintln!("User did not select anything");
                     10
                 }

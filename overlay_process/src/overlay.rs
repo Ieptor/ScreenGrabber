@@ -1,14 +1,14 @@
 use druid::piet::{Color, RenderContext, ImageFormat, InterpolationMode};
 use druid::widget::Widget;
-use druid::{LocalizedString, Menu, MenuItem, Data, Env, EventCtx, Point, Rect, Selector, Lens, Event, LifeCycle, LifeCycleCtx, UpdateCtx, LayoutCtx, BoxConstraints, Size, Application};
+use druid::{Data, Env, EventCtx, Point, Rect, Selector, Lens, Event, LifeCycle, LifeCycleCtx, UpdateCtx, LayoutCtx, BoxConstraints, Size, Application};
 use screenshots::Screen;
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::Mutex;
-use std::thread;
-use std::time::Duration;
 use crate::IconData;
 use std::process::Command;
+
+use overlay_process::utils::get_project_src_path;
 
 
 #[derive(PartialEq, Debug)]
@@ -204,9 +204,12 @@ impl Widget<AppState> for ScreenshotOverlay {
                                 BACK_BUTTON => { // exit
                                     println!("Closing overlay");
                                     Application::global().quit();
-                                    let _ = Command::new(r"..\gui_sg\target\release\gui_sg.exe")
+                                    let exe_path = get_project_src_path();
+                                    println!("{}", exe_path.display());
+                                    let final_path = exe_path.display().to_string() + r"\gui_sg\target\release\gui_sg.exe";
+                                    let _ = Command::new(final_path)
                                             .spawn()
-                                            .expect("Failed to start overlay process");
+                                            .expect("Failed to start gui process");
                                 },
                                 CORNERS_BUTTON => {
                                     //IF CORNER IS CLICKED, MAKE IT THE NEW STARTING POINT FOR DRAGGING and start painting in refining area

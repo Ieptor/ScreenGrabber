@@ -1,17 +1,16 @@
-use druid::{ExtEventSink, Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt};
+use druid::{Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt};
 use druid::widget::{Either, BackgroundBrush};
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
 use screenshots::Screen;
-
 mod custom_widgets;
 use custom_widgets::{initial_layout, save_path_layout, shortcut_layout};
 
 mod utils;
-use utils::read_config_file;
+use utils::{read_config_file};
 
-use overlay_process::utils::capture_full_screen_screenshot;
+use overlay_process::utils::{capture_full_screen_screenshot, get_config_file_path, get_project_src_path};
 
 pub const HOME: Selector = Selector::new("my_app.home");
 pub const LAUNCH_OVERLAY: Selector = Selector::new("my_app.launch_overlay");
@@ -20,8 +19,6 @@ pub const SHORTCUT_GUI: Selector = Selector::new("my_app.launch_shortcutgui");
 pub const RUN_IN_BACKGROUND: Selector = Selector::new("my_app.launch_run_background");
 pub const FULLSCREEN: Selector = Selector::new("my_app.test");
 pub const DELAY: Selector<u32> = Selector::new("my_app.delay");
-
-
 
 #[derive(Clone, Data, Lens)]
 pub struct MainState {
@@ -35,14 +32,14 @@ pub struct MainState {
 }
 
 
-
 fn main() {
-    let config_file_path = std::path::Path::new("../config/config.txt");
+    let config_file_path = get_config_file_path();
+
     let mut path = "target".to_string();
     let mut bg_shortcut_string = "ctrl + k".to_string(); // run in background
     let mut fs_shortcut_string = "ctrl + f".to_string(); // full screen
 
-    match read_config_file(config_file_path) {
+    match read_config_file(&config_file_path) {
         Ok((savepath, bg_shortcut, fs_shortcut)) => {
             path = savepath;
             bg_shortcut_string = bg_shortcut;
@@ -71,10 +68,10 @@ fn main() {
     };
 
     let launcher = AppLauncher::with_window(main_window);
-    let handle = launcher.get_external_handle();
+    let _handle = launcher.get_external_handle();
 
     launcher
-        .delegate(Delegate{main_window:handle})
+        .delegate(Delegate{})
         .launch(initial_state)
         .expect("Failed to launch application");
 
@@ -99,9 +96,8 @@ fn build_ui() -> impl Widget<MainState> {
     )
 }
 
-struct Delegate {
-    main_window: ExtEventSink
-}
+struct Delegate {}
+
 impl druid::AppDelegate<MainState> for Delegate {
     fn command(
         &mut self,
@@ -116,10 +112,11 @@ impl druid::AppDelegate<MainState> for Delegate {
             data.launch_overlay = true;
             //create a process that runs run_overlay() and then quit this gui
             Application::global().quit();
-
             thread::sleep(Duration::from_secs(data.delay_state as u64));
             // Launch the overlay binary as a new process
-            let _ = Command::new(r"..\overlay_process\target\release\overlay_process.exe")
+            let exe_path = get_project_src_path();
+            let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+            let _ = Command::new(final_path)
                 .spawn()
                 .expect("Failed to start overlay process");
             Handled::Yes
@@ -141,11 +138,13 @@ impl druid::AppDelegate<MainState> for Delegate {
         }  else if cmd.is(RUN_IN_BACKGROUND){
             Application::global().quit();
             //run the background shortcut listener
-            let _ = Command::new("cmd")
-                .args(&["/C", "start", r"..\background_listener\target\release\background_listener.exe"])
+                let project_dir = get_project_src_path();
+                println!("{}", project_dir.display());
+                let _ = Command::new("cmd")
+                .current_dir(&project_dir)
+                .args(&["/C", "start", r".\background_listener\target\release\background_listener.exe"])
                 .spawn()
                 .expect("Failed to start background listener");
-                    
             Handled::Yes
         } else if cmd.is(FULLSCREEN){
             println!("capturing fullscreen");
@@ -155,7 +154,9 @@ impl druid::AppDelegate<MainState> for Delegate {
             match capture_full_screen_screenshot(Some(screens[0]), true){
                 Ok(path) => {
                     println!("Screenshot captured");
-                    let _ = Command::new(r"..\edit_gui\target\release\edit_gui.exe")
+                    let exe_path = get_project_src_path();
+                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                    let _ = Command::new(final_path)
                     .arg(&path)
                     .spawn()
                     .expect("Failed to start process");

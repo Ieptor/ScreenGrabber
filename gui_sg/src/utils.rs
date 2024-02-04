@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{self, BufRead, BufReader,  BufWriter, Write, Read};
-use std::path::Path;
+use std::path::{Path};
 
 
 pub fn save_to_config_file(file_path: &Path, configuration: &str, type_: &str) -> io::Result<()> {
@@ -53,7 +53,7 @@ pub fn read_config_file(file_path: &Path) -> io::Result<(String, String, String)
 
     // Re-open the file using a new BufReader for the next line
     let file = File::open(file_path)?;
-    let mut shortcut_reader = BufReader::new(&file);
+    let shortcut_reader = BufReader::new(&file);
 
     // Read the second line of the file (shortcut)
     let bg_shortcut = match shortcut_reader.lines().nth(1) {
@@ -68,7 +68,7 @@ pub fn read_config_file(file_path: &Path) -> io::Result<(String, String, String)
 
     // Re-open the file using a new BufReader for the third line
     let file = File::open(file_path)?;
-    let mut shortcut_reader = BufReader::new(&file);
+    let shortcut_reader = BufReader::new(&file);
 
     let fs_shortcut = match shortcut_reader.lines().nth(2) {
         Some(Ok(fsshortcut)) => fsshortcut,
@@ -109,3 +109,4 @@ pub fn validate_shortcuts(bg_shortcut: &String, fs_shortcut: &String) -> Shortcu
         }
     }
 }
+
