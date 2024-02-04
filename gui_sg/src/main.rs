@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use druid::{Lens, Application, AppLauncher, LocalizedString, WindowDesc, Data, Widget, Selector, Handled, DelegateCtx, Env, Color, WidgetExt};
 use druid::widget::{Either, BackgroundBrush};
 use std::process::Command;
@@ -31,6 +33,9 @@ pub struct MainState {
     delay_state: u32,
 }
 
+static mut GLOBAL_STATE: u8 = 0;
+static mut DELAY_VALUE: u32 = 0;
+
 
 fn main() {
     let config_file_path = get_config_file_path();
@@ -39,6 +44,7 @@ fn main() {
     let mut bg_shortcut_string = "ctrl + k".to_string(); // run in background
     let mut fs_shortcut_string = "ctrl + f".to_string(); // full screen
 
+    
     match read_config_file(&config_file_path) {
         Ok((savepath, bg_shortcut, fs_shortcut)) => {
             path = savepath;
@@ -75,6 +81,35 @@ fn main() {
         .launch(initial_state)
         .expect("Failed to launch application");
 
+
+    let screens = Screen::all().unwrap();
+    unsafe {
+        thread::sleep(Duration::from_secs(DELAY_VALUE as u64));
+        if GLOBAL_STATE == 1 {
+                        // Launch the overlay binary as a new process
+                        let exe_path = get_project_src_path();
+                        let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                        let _ = Command::new(final_path)
+                            .spawn()
+                            .expect("Failed to start overlay process");
+        } else if GLOBAL_STATE == 2 {
+            match capture_full_screen_screenshot(Some(screens[0]), true){
+                Ok(path) => {
+                    println!("Screenshot captured");
+                    let exe_path = get_project_src_path();
+                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                    let _ = Command::new(final_path)
+                    .arg(&path)
+                    .spawn()
+                    .expect("Failed to start process");
+                }
+                Err(err) => {
+                    eprintln!("Error capturing screenshot: {}", err); //TODO GESTIRE MEGLIO QUEST'ERRORE
+                }
+            }
+        }
+    }
+    
 }
 
 fn build_ui() -> impl Widget<MainState> {
@@ -112,13 +147,12 @@ impl druid::AppDelegate<MainState> for Delegate {
             data.launch_overlay = true;
             //create a process that runs run_overlay() and then quit this gui
             Application::global().quit();
-            thread::sleep(Duration::from_secs(data.delay_state as u64));
-            // Launch the overlay binary as a new process
-            let exe_path = get_project_src_path();
-            let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
-            let _ = Command::new(final_path)
-                .spawn()
-                .expect("Failed to start overlay process");
+
+            unsafe {
+                GLOBAL_STATE = 1;
+                DELAY_VALUE = data.delay_state;
+            }
+
             Handled::Yes
         } else if cmd.is(PATH_GUI) {
             data.launch_overlay = false;
@@ -148,23 +182,14 @@ impl druid::AppDelegate<MainState> for Delegate {
             Handled::Yes
         } else if cmd.is(FULLSCREEN){
             println!("capturing fullscreen");
-            let screens = Screen::all().unwrap();
+        
+            Application::global().quit();
 
-            thread::sleep(Duration::from_secs(data.delay_state as u64));
-            match capture_full_screen_screenshot(Some(screens[0]), true){
-                Ok(path) => {
-                    println!("Screenshot captured");
-                    let exe_path = get_project_src_path();
-                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
-                    let _ = Command::new(final_path)
-                    .arg(&path)
-                    .spawn()
-                    .expect("Failed to start process");
-                }
-                Err(err) => {
-                    eprintln!("Error capturing screenshot: {}", err); //TODO GESTIRE MEGLIO QUEST'ERRORE
-                }
+            unsafe {
+                GLOBAL_STATE = 2;
+                DELAY_VALUE = data.delay_state;
             }
+
            Handled::Yes
         } else if cmd.is(DELAY){
             if let Some(number) = cmd.get(DELAY) {

@@ -2,6 +2,8 @@
 
 use crate::{MainState, RUN_IN_BACKGROUND, LAUNCH_OVERLAY, PATH_GUI, SHORTCUT_GUI, HOME, FULLSCREEN, DELAY};
 use crate::utils::{save_to_config_file, ShortcutValidation, validate_shortcuts};
+use overlay_process::utils::{get_config_file_path};
+
 
 //external dependencies
 
@@ -104,7 +106,6 @@ impl IconButton {
             let received_command = match rx.recv() {
                 Ok(cmd) => cmd,
                 Err(_err) => {//gestire meglio questo errore TODO
-                    eprintln!("User did not select anything");
                     10
                 }
             };
@@ -337,9 +338,10 @@ pub fn save_path_layout() -> impl Widget<MainState> {
             if let Ok(Some(selected_directory)) = FileDialog::new().show_open_single_dir() {
                 data.path = selected_directory.to_string_lossy().to_string(); 
                 if let Some(dir) = selected_directory.to_str() {
-                    let config_path =  std::path::Path::new("../config/config.txt");
-                    match save_to_config_file(config_path, dir, "save_path") {
-                        Ok(_) => {},
+
+                    let config_path = get_config_file_path();
+                    match save_to_config_file(&config_path, dir, "save_path") {
+                        Ok(_) => {show_message_box("Saved", "Path saved correctly.");},
                         Err(_) => {show_message_box("Error", "An error occurred in saving the path, retry.");}
                     }
                 }
@@ -388,16 +390,16 @@ pub fn shortcut_layout() -> impl Widget<MainState> {
 
     let apply_button = Button::new("Apply")
         .on_click(|_ctx, data: &mut MainState, _env| {
-            let config_path =  std::path::Path::new("../config/config.txt");
+            let config_path = get_config_file_path();
                 let validation = validate_shortcuts(&data.bg_shortcut, &data.fs_shortcut);
                 let mut flag = false;
                 match validation {
                     ShortcutValidation::Valid => {
-                        match save_to_config_file(config_path, &data.bg_shortcut, "bg_shortcut") {
+                        match save_to_config_file(&config_path, &data.bg_shortcut, "bg_shortcut") {
                             Ok(_) => flag = true,
                             Err(_) => {show_message_box("Error", "An error occurred in saving the configuration, retry.")}
                         }
-                        match save_to_config_file(config_path, &data.fs_shortcut, "fs_shortcut") {
+                        match save_to_config_file(&config_path, &data.fs_shortcut, "fs_shortcut") {
                             Ok(_) => flag = true,
                             Err(_) => {show_message_box("Error", "An error occurred in saving the configuration, retry.")}
                         }

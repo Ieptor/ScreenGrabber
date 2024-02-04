@@ -1,3 +1,3 @@
-C:\Users\pganc\Desktop
-ctrl + k
-ctrl + d
+C:\Users\pganc\Desktop\test
+ctrl + a
+ctrl + f

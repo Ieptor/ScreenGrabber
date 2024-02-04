@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use druid::{AppLauncher, LocalizedString, WindowDesc, Size, Rect};
 use screenshots::Screen;
 use std::process::Command;

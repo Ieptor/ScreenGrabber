@@ -7,7 +7,7 @@ mod utils;
 use utils::read_config_file;
 use screenshots::Screen;
 use std::process::Command;
-use overlay_process::utils::{capture_full_screen_screenshot, get_config_file_path};
+use overlay_process::utils::{capture_full_screen_screenshot, get_config_file_path, get_project_src_path};
 
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
@@ -96,7 +96,9 @@ fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut
 
                         if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
                             if event.id == id1 {
-                                let _ = Command::new(r"..\overlay_process\target\release\overlay_process.exe")
+                                let exe_path = get_project_src_path();
+                                let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                                let _ = Command::new(final_path)
                                         .spawn()
                                         .expect("Failed to start overlay process");
                             } else if event.id == id2 {
@@ -139,6 +141,7 @@ pub fn main(){
     println!("   _  ::          Right now the software is running in background!");
     println!("  (_)'  `\\.        - Click ({:}) hotkey to open the screenshot overlay", shortcut_string);
     println!("          '\\.      - Click ({:}) hotkey to do a fullscreen screenshot", shortcut_fs);
+    println!();
     println!("You can close the application by closing this terminal.");
     
     let shortcut_command = parse_hotkey(shortcut_string.clone());

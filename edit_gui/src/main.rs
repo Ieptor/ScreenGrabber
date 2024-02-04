@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use druid::{AppLauncher, LocalizedString, WindowDesc};
 use image::{load_from_memory, DynamicImage};
 use std::fs;
@@ -34,6 +36,10 @@ const TRIANGLE_ICON_DATA: &[u8] = include_bytes!("../../icons/triangle.png");
 const ORANGE_ICON_DATA: &[u8] = include_bytes!("../../icons/arancione.png");
 const GREEN_ICON_DATA: &[u8] = include_bytes!("../../icons/verde.png");
 const YELLOW_ICON_DATA: &[u8] = include_bytes!("../../icons/giallo.png");
+
+const SMALL_ICON_DATA: &[u8] = include_bytes!("../../icons/line-small.png");
+const MEDIUM_ICON_DATA: &[u8] = include_bytes!("../../icons/line-medium.png");
+const LARGE_ICON_DATA: &[u8] = include_bytes!("../../icons/line-large.png");
 
 const CHECKBOX_ICON_DATA: &[u8] = include_bytes!("../../icons/checkbox.png");
 
@@ -120,7 +126,11 @@ fn initialize_icons() -> Vec<DynamicImage>{
     let orange_icon = load_from_memory(ORANGE_ICON_DATA).expect("Failed to load forward icon");
     let yellow_icon = load_from_memory(YELLOW_ICON_DATA).expect("Failed to load forward icon");
 
+    let small_icon = load_from_memory(SMALL_ICON_DATA).expect("Failed to load forward icon");
+    let medium_icon = load_from_memory(MEDIUM_ICON_DATA).expect("Failed to load forward icon");
+    let large_icon = load_from_memory(LARGE_ICON_DATA).expect("Failed to load forward icon");
+
     let check_icon = load_from_memory(CHECKBOX_ICON_DATA).expect("Failed to load forward icon");
 
-    vec![resize_icon, text_icon, highlight_icon, shapes_icon, back_icon, forward_icon, return_icon, circle_icon, rectangle_icon, triangle_icon, orange_icon, yellow_icon, green_icon, save_icon, check_icon]
+    vec![resize_icon, text_icon, highlight_icon, shapes_icon, back_icon, forward_icon, return_icon, circle_icon, rectangle_icon, triangle_icon, orange_icon, yellow_icon, green_icon, save_icon, check_icon, small_icon, medium_icon, large_icon]
 }

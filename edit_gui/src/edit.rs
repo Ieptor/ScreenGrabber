@@ -18,6 +18,7 @@ pub struct Edit {
     adding_shapes: bool,
     highlighting: bool,
     disable_event: bool,
+    pencil_selected: bool,
     resizing: u8,
     list_of_edits: (Vec<DynamicImage>, usize), //list of images with operations to undo
     temp_edit: Option<DynamicImage>,
@@ -40,7 +41,8 @@ impl Edit {
             adding_shapes: false,
             highlighting: false,
             disable_event: false,
-            resizing: 0,
+            pencil_selected: false,
+            resizing: 1,
             list_of_edits: (vec![screenshot_clone], 1),
             temp_edit: None,
             choosen_shape: 0,
@@ -141,10 +143,14 @@ impl Widget<AppState> for Edit {
                                 self.drawing = true;
                                 //set orange highlighter
                                 self.color = (Rgba([255, 165, 0, 128]), 20, 1);
+                            } else if self.pencil_selected  {
+                                //writing, set small
+                                self.color = (Rgba([0, 0, 0, 255]), 5, 1);
                             } else {
                                 //writing normally
                                 self.drawing = true;
-                                self.color = (Rgba([0, 0, 0, 255]), 10, 0);
+                                self.pencil_selected = true;
+                                self.color = (Rgba([0, 0, 0, 255]), 5, 0);
                             }
 
                             self.resizing = 0;
@@ -152,14 +158,17 @@ impl Widget<AppState> for Edit {
                             ctx.request_paint();
                         },
                         1 => {
-                            //highlighter or rectangle or yellow highlighter 
+                            //highlighter or rectangle or yellow highlighter or small size pencil
                             if self.adding_shapes {
                                 self.choosen_shape = 1; //1 -> rectangle
                             } else if self.highlighting {
                                 self.drawing = true;
                                 //set yellow highlighter
                                 self.color = (Rgba([255, 255, 0, 128]), 20, 2);
-                            } else {
+                            } else if self.pencil_selected  {
+                                //medium pencil
+                                self.color = (Rgba([0, 0, 0, 255]), 10, 2);
+                            }  else {
                                 //initialize highlighting process, default value = orange
                                 self.drawing = true;
                                 self.highlighting = true;
@@ -176,6 +185,9 @@ impl Widget<AppState> for Edit {
                             } else if self.highlighting {
                                 self.drawing = true;
                                 self.color = (Rgba([0, 255, 0, 128]), 20, 3);
+                            } else if self.pencil_selected {
+                                //large pencil
+                                self.color = (Rgba([0, 0, 0, 255]), 15, 3);
                             } else {
                                 self.adding_shapes = true;
                                 self.drawing = false;
@@ -206,10 +218,11 @@ impl Widget<AppState> for Edit {
                         },
                         5 => {
                             //resize or back
-                            if self.adding_shapes || self.highlighting {
+                            if self.adding_shapes || self.highlighting || self.pencil_selected {
                                 self.adding_shapes = false;
                                 self.highlighting = false;
-                                self.color = (Rgba([0, 0, 0, 255]), 10, 0);
+                                self.pencil_selected = false;
+                                self.resizing = 1;
                                 ctx.request_paint();
                             } else {
                                 //resize functrionality
@@ -222,7 +235,6 @@ impl Widget<AppState> for Edit {
                         }, 
                         6 => {
                             //resizing SAVING functionality
-
                             if let Some(selection) = self.selection {
                                 let point = apply_scaling_to_point(self.scaling_factors, Point::new(selection.x0, selection.y0));
                                 let width = selection.width().round() as u32;
@@ -250,7 +262,7 @@ impl Widget<AppState> for Edit {
                                     self.list_of_edits = (edits_clone, new_index);
                                 }
                             }
-                            self.resizing = 0;
+                            self.resizing = 1;
                             self.selection = None;
                             ctx.request_paint();                        
                         },
@@ -415,23 +427,11 @@ impl Widget<AppState> for Edit {
         General icons
         */
 
-        if self.adding_shapes == false && self.highlighting == false { 
+        if !self.adding_shapes && !self.highlighting && !self.pencil_selected && self.resizing != 0 { 
             for i in 0..4 {
                 let (text, offset_x, offset_y, bold) = match i {
-                    0 => {
-                        if self.resizing == 0 {
-                            ("Resize".to_string(), 15.0, 10.0, false)
-                        } else {
-                            ("• Resize".to_string(), 11.0, 10.0, true)
-                        }
-                    },  
-                    1 => {
-                        if !self.highlighting && !self.adding_shapes && self.resizing == 0 {
-                            ("• Pencil".to_string(), 3.0, 10.0, true)
-                        } else {
-                            ("Pencil".to_string(), 7.0, 10.0, false)
-                        }
-                    }, 
+                    0 => ("• Resize".to_string(), 11.0, 10.0, true),  
+                    1 => ("Pencil".to_string(), 7.0, 10.0, false), 
                     2 => ("Highlighter".to_string(), 1.0, 10.0, false), 
                     3 => ("Shapes".to_string(), 15.0, 10.0, false), 
                     _ => unreachable!(),
@@ -452,6 +452,56 @@ impl Widget<AppState> for Edit {
                 ctx.draw_text(&final_build, text_position);
         
                 let icon = ctx.make_image(icon_width as usize, icon_height as usize, &self.images.icons[i].to_rgba8(), ImageFormat::RgbaSeparate)
+                            .unwrap();
+
+                let icon_dest_rect = Rect::from_origin_size(
+                    Point::new(icon_top_position.x + (icon_width + spacing) * i as f64, icon_top_position.y),
+                    Size::new(icon_width, icon_height),
+                );
+
+                ctx.draw_image(&icon, icon_dest_rect, InterpolationMode::Bilinear);
+            }
+        } else if self.pencil_selected {
+            for i in 0..4 {
+                let (text, offset_x, offset_y, bold) = match i {
+                    1 => {
+                        if self.color.2 == 1 {
+                            ("• Small".to_string(), 11.0, 10.0, true)
+                        } else {
+                            ("Small".to_string(), 15.0, 10.0, false)
+                        }
+                    },
+                    2 => {
+                        if self.color.2 == 2 {
+                            ("• Medium".to_string(), 3.0, 10.0, true)
+                        } else {
+                            ("Medium".to_string(), 7.0, 10.0, false)
+                        }
+                    }, 
+                    3 => {
+                        if self.color.2 == 3 {
+                            ("• Large".to_string(), 11.0, 10.0, true)
+                        } else {
+                            ("Large".to_string(), 15.0, 10.0, false)
+                        }
+                    }, 
+                    0 => ("".to_string(), 0.0, 0.0, false), 
+                    _ => unreachable!(),
+                };
+
+                let times = ctx.text().font_family("Times New Roman").unwrap();
+                let text_layout = ctx.text().new_text_layout(text).font(times.clone(), 14.0);
+                let text_layout_builder = if bold { text_layout.default_attribute(FontWeight::BOLD) } else { text_layout };
+                let final_build = text_layout_builder.build().unwrap();
+
+                let text_position = Point::new(
+                    icon_top_position.x + offset_x + (icon_width + spacing) * i  as f64,
+                    icon_top_position.y + icon_height + offset_y, 
+                );
+                ctx.draw_text(&final_build, text_position);
+                
+                let reposition_icon = if i == 0 { 6 } else { 14 };
+                let icon = ctx.make_image(icon_width as usize, icon_height as usize, &self.images.icons[i+reposition_icon].to_rgba8(), ImageFormat::RgbaSeparate)
                             .unwrap();
 
                 let icon_dest_rect = Rect::from_origin_size(
