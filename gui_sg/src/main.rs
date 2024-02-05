@@ -90,12 +90,12 @@ fn main() {
                         let exe_path = get_project_src_path();
                         let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
                         let _ = Command::new(final_path)
+                            .arg("t")
                             .spawn()
                             .expect("Failed to start overlay process");
         } else if GLOBAL_STATE == 2 {
             match capture_full_screen_screenshot(Some(screens[0]), true){
                 Ok(path) => {
-                    println!("Screenshot captured");
                     let exe_path = get_project_src_path();
                     let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
                     let _ = Command::new(final_path)
@@ -172,24 +172,26 @@ impl druid::AppDelegate<MainState> for Delegate {
         }  else if cmd.is(RUN_IN_BACKGROUND){
             Application::global().quit();
             //run the background shortcut listener
+            /*
                 let project_dir = get_project_src_path();
-                println!("{}", project_dir.display());
                 let _ = Command::new("cmd")
                 .current_dir(&project_dir)
                 .args(&["/C", "start", r".\background_listener\target\release\background_listener.exe"])
                 .spawn()
                 .expect("Failed to start background listener");
+            */
+            let exe_path = get_project_src_path();
+            let final_path = exe_path.display().to_string() + r"\background_listener\target\release\background_listener.exe";
+            let _ = Command::new(final_path)
+                    .spawn()
+                    .expect("Failed to start background listener");
             Handled::Yes
         } else if cmd.is(FULLSCREEN){
-            println!("capturing fullscreen");
-        
             Application::global().quit();
-
             unsafe {
                 GLOBAL_STATE = 2;
                 DELAY_VALUE = data.delay_state;
             }
-
            Handled::Yes
         } else if cmd.is(DELAY){
             if let Some(number) = cmd.get(DELAY) {

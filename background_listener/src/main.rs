@@ -1,14 +1,23 @@
+#![windows_subsystem = "windows"]
+
 //external dependencies
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, hotkey::{HotKey, Modifiers, Code}};
 use winapi::um::winuser::{self, MSG};
+use winapi::shared::winerror::WAIT_TIMEOUT;
+use winapi::um::winbase::WAIT_OBJECT_0;
 
 //internal dependencies
 mod utils;
 use utils::read_config_file;
 use screenshots::Screen;
 use std::process::Command;
-use overlay_process::utils::{capture_full_screen_screenshot, get_config_file_path, get_project_src_path};
+use overlay_process::utils::{capture_full_screen_screenshot, get_config_file_path, get_project_src_path, show_message_box};
 
+extern crate systray;
+
+use std::sync::{Arc, Mutex};
+use std::thread;
+use systray::{Application};
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 
@@ -72,54 +81,6 @@ pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 }
 
 
-fn global_shortcut_handler(shortcut_command: Option<(Modifiers, Code)>, shortcut_fs_command: Option<(Modifiers, Code)>) {
-    if let Some((modifier, key1)) = shortcut_command {
-        if let Some((modifier2, key2)) = shortcut_fs_command {
-            let manager = GlobalHotKeyManager::new().unwrap();
-            let hotkey1 = HotKey::new(Some(modifier),key1);
-            let hotkey2 = HotKey::new(Some(modifier2),key2);
-
-            let id1 = hotkey1.id();
-            let id2 = hotkey2.id();
-            let _ = manager.register(hotkey1);
-            let _2 = manager.register(hotkey2);
-
-            // Run the win32 event loop on the same thread
-            unsafe{
-                let mut msg: MSG = std::mem::zeroed();
-                
-                loop {
-                
-                    if winuser::GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
-                        winuser::TranslateMessage(&msg);
-                        winuser::DispatchMessageW(&msg);
-
-                        if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
-                            if event.id == id1 {
-                                let exe_path = get_project_src_path();
-                                let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
-                                let _ = Command::new(final_path)
-                                        .spawn()
-                                        .expect("Failed to start overlay process");
-                            } else if event.id == id2 {
-                                let screens = Screen::all().unwrap();
-                                match capture_full_screen_screenshot(Some(screens[0]), true) {
-                                    Ok(_) => {
-                                        println!("Screenshot captured successfully");
-                                    }
-                                    Err(err) => {
-                                        println!("Failed to capture screenshot: {}", err);
-                                    }
-                                }
-                            }
-                    }
-                    
-                }
-            }
-        }
-    }
-}
-}
 
 pub fn main(){   
     let config_path = get_config_file_path();
@@ -136,19 +97,117 @@ pub fn main(){
         }
     }
 
-    println!("   _       ,/'");
-    println!("  (_).  ,/'       Welcome to SnipGrab by Pietro and Kevin.");
-    println!("   _  ::          Right now the software is running in background!");
-    println!("  (_)'  `\\.        - Click ({:}) hotkey to open the screenshot overlay", shortcut_string);
-    println!("          '\\.      - Click ({:}) hotkey to do a fullscreen screenshot", shortcut_fs);
-    println!();
-    println!("You can close the application by closing this terminal.");
-    
+    let helper_str = format!(
+        "The program is now listening in the background.\n\
+        Click ({}) to open the screenshot overlay\n\
+        Blick ({}) to take a fullscreen screenshot.",
+        shortcut_string,
+        shortcut_fs
+    );
+    show_message_box("Background listener", &helper_str, None);
+
     let shortcut_command = parse_hotkey(shortcut_string.clone());
-    let shortcutfs_command = parse_hotkey(shortcut_fs.clone());
-    //let key_thread = std::thread::spawn(move || global_shortcut_handler(shortcut_command));
-    //key_thread.join().expect("Failed to join the key-listening thread");
+    let shortcut_fs_command = parse_hotkey(shortcut_fs.clone());
 
-    global_shortcut_handler(shortcut_command, shortcutfs_command);
+    // put app in systray
+    let mut app = Application::new().unwrap();
 
+    let icon_path = get_project_src_path();
+    let final_path = icon_path.display().to_string() + r"\background_listener\src\icon.ico";
+     // Set icon
+    app.set_icon_from_file(&final_path).unwrap();
+
+    // Add a quit item to the menu
+    app.add_menu_item("Quit", |window| {
+        window.quit();
+        Ok::<(), systray::Error>(()) // Specify the error type explicitly
+    }).unwrap();
+
+
+    //needed to notify closing in systray to actual listener closing
+    let running = Arc::new(Mutex::new(true));
+    let running_clone = Arc::clone(&running);
+
+    let handle = thread::spawn(move || {
+        loop {
+            if let Ok(event) = app.wait_for_message() {
+                match event {
+                    () => {
+                        //app has been closed, remove listener
+                        *running_clone.lock().unwrap() = false; // Use cloned Arc inside the closure
+                        break;
+                    },
+                }
+            }
+        }
+    });
+
+    if let Some((modifier, key1)) = shortcut_command {
+        if let Some((modifier2, key2)) = shortcut_fs_command {
+            let manager = GlobalHotKeyManager::new().unwrap();
+            let hotkey1 = HotKey::new(Some(modifier),key1);
+            let hotkey2 = HotKey::new(Some(modifier2),key2);
+
+            let id1 = hotkey1.id();
+            let id2 = hotkey2.id();
+            let _ = manager.register(hotkey1);
+            let _2 = manager.register(hotkey2);
+
+            // Run the win32 event loop on the same thread
+            unsafe{
+                let mut msg: MSG = std::mem::zeroed();
+                
+                loop {
+                    // Check if we need to close
+                    if !*running.lock().unwrap() {
+                        break;
+                    }
+            
+                    // Check for messages or wait for a timeout
+                    let result = winuser::MsgWaitForMultipleObjectsEx(0, std::ptr::null(), 0, winuser::QS_ALLINPUT, winuser::MWMO_INPUTAVAILABLE);
+            
+                    if result == WAIT_OBJECT_0 {
+                        // There are messages to process
+                        while winuser::PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, winuser::PM_REMOVE) != 0 {
+                            winuser::TranslateMessage(&msg);
+                            winuser::DispatchMessageW(&msg);
+                        }
+                    } else if result == WAIT_TIMEOUT {
+                        // Check the mutex after a timeout
+                        if !*running.lock().unwrap() {
+                            break;
+                        }
+                    }
+            
+                    // Check for global hotkey events
+                    if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+                        if event.id == id1 {
+                            let exe_path = get_project_src_path();
+                            let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                            let _ = Command::new(final_path)
+                                .arg("f")
+                                .spawn()
+                                .expect("Failed to start overlay process");
+                        } else if event.id == id2 {
+                            let screens = Screen::all().unwrap();
+                            match capture_full_screen_screenshot(Some(screens[0]), true) {
+                                Ok(path) => {
+                                    let exe_path = get_project_src_path();
+                                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                                    let _ = Command::new(final_path)
+                                    .arg(&path)
+                                    .spawn()
+                                    .expect("Failed to start process");
+                                }
+                                Err(err) => {
+                                    eprintln!("Failed to capture screenshot: {}", err);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    handle.join().unwrap();
 }

@@ -23,7 +23,6 @@ pub struct ScreenshotOverlay {
     screen: Option<Screen>,
     overlay_state: OverlayState,
     icon_data: IconData,
-    refining: bool,
 }
 
 impl ScreenshotOverlay {
@@ -35,7 +34,6 @@ impl ScreenshotOverlay {
             screen: None,
             overlay_state: OverlayState::Selecting,
             icon_data,
-            refining: false
         }
     }
 
@@ -56,31 +54,24 @@ impl ScreenshotOverlay {
             //&& point.y <= screen_bottom as f64
     }
 
-    pub fn show_buttons(&mut self) {
-        self.overlay_state = OverlayState::ButtonsShown;
-    }
-
-    /* 
-    pub fn hide_buttons(&mut self) {
-        self.overlay_state = OverlayState::Selecting;
-    }*/
 }
 
-const SELECT_AREA: Selector<()> = Selector::new("select-area");
 
 #[derive(Clone, Data, Lens)]
 pub struct AppState {
-    selection: Rect,
+    selection: Option<Rect>,
     screens: Arc<Vec<Screen>>,
     capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen, i32)>>>>,
+    back: String,
 }
 
 impl AppState {
-    pub fn new(screens: Arc<Vec<Screen>>, capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen, i32)>>>>) -> Self {
+    pub fn new(screens: Arc<Vec<Screen>>, capture_channel: Arc<Mutex<Option<mpsc::Sender<(Rect, Screen, i32)>>>>, back: String) -> Self {
         AppState {
-            selection: Rect::ZERO,
+            selection: None,
             screens,
-            capture_channel
+            capture_channel,
+            back,
         }
     }
 }
@@ -103,60 +94,42 @@ impl IsInsideRect for Point {
     }
 }
 
-
-#[derive(Debug, Clone, Copy)]
-struct SelectorWithPoint {
-    selector: Selector<()>,
-    point: Point,
-}
-
 const SAVE_BUTTON: Selector<()> = Selector::new("save-button_clicked");
 const BACK_BUTTON: Selector<()> = Selector::new("back-clicked");
-const CORNERS_BUTTON: Selector<()> = Selector::new("angles-clicked");
+const CLEANUP_BUTTON: Selector<()> = Selector::new("broom-clicked");
 
+fn get_clicked_button(mouse_pos: Point, data: &AppState, ctx: &EventCtx, screen: Option<Screen>) -> Option<Selector> {
 
-fn get_clicked_button(mouse_pos: Point, screen: Screen, data: &AppState) -> Option<SelectorWithPoint> {
+    //general icons
     let icon_size = Size::new(32.0, 32.0);
-    let (left_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
-    let corners = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
+    //top back icon
+    let screens = Screen::all().unwrap();
+    let size = ctx.size();
+    let back_size = Size::new(64.0, 64.0);
+    let mid_point_x = size.width / (2.0 * screens.len() as f64) - 64.0;
+    let position = Point::new(mid_point_x, 20.0); // Adjust as needed
 
-    if mouse_pos.is_inside_rect(left_button_origin, icon_size) {
-        Some(SelectorWithPoint {
-            selector: SAVE_BUTTON,
-            point: mouse_pos,
-        })
-    } else if mouse_pos.is_inside_rect(right_button_origin, icon_size) {
-        Some(SelectorWithPoint {
-            selector: BACK_BUTTON,
-            point: mouse_pos,
-        })
-    } else if mouse_pos.rect_inside_rect(corners[0]) || mouse_pos.rect_inside_rect(corners[4]) {
-        println!("bottom left corner clicked");
-        Some(SelectorWithPoint {
-            selector: CORNERS_BUTTON,
-            point: mouse_pos,
-        })
-    } else if mouse_pos.rect_inside_rect(corners[1]) || mouse_pos.rect_inside_rect(corners[6]) {
-        println!("bottom right corner clicked");
-        Some(SelectorWithPoint {
-            selector: CORNERS_BUTTON,
-            point: mouse_pos,
-        })
-    } else if mouse_pos.rect_inside_rect(corners[2]) || mouse_pos.rect_inside_rect(corners[5]) {
-        println!("top left corner clicked");
-        Some(SelectorWithPoint {
-            selector: CORNERS_BUTTON,
-            point: mouse_pos,
-        })
-    } else if mouse_pos.rect_inside_rect(corners[3]) || mouse_pos.rect_inside_rect(corners[7]) {
-        println!("top right corner clicked");
-        Some(SelectorWithPoint {
-            selector: CORNERS_BUTTON,
-            point: mouse_pos,
-        })
+    if let Some(screen) = screen {
+        if let Some(_) = data.selection {
+            let (left_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
+            if mouse_pos.is_inside_rect(left_button_origin, icon_size) {
+                return Some(SAVE_BUTTON);
+            } else if mouse_pos.is_inside_rect(right_button_origin, icon_size) {
+                return Some(CLEANUP_BUTTON);
+            } else if mouse_pos.is_inside_rect(position, back_size) {
+                return Some(BACK_BUTTON);
+            }
+        } else {
+                if mouse_pos.is_inside_rect(position, back_size){
+                    return Some(BACK_BUTTON);
+                } 
+        }
     } else {
-        None
+        if mouse_pos.is_inside_rect(position, back_size){
+            return Some(BACK_BUTTON);
+        } 
     }
+    None
 }
 
 impl Widget<AppState> for ScreenshotOverlay {
@@ -175,70 +148,66 @@ impl Widget<AppState> for ScreenshotOverlay {
                 }
 
                 // find the screen where (x0, y0) is located
-                let p = druid::Point::new(data.selection.x0, data.selection.y0);
+               
+                let p = mouse_event.pos;
                 for screen in screens.iter() {
                     if self.is_point_in_screen(p, screen, translation_factor.abs()) {
                         self.set_screen(screen.clone());
                         break;
                     }
                 }
-
-                if self.overlay_state == OverlayState::ButtonsShown {
-                    let mouse_pos = mouse_event.pos;
-                    if let Some(screen) = self.screen {
-                        if let Some(button_clicked) = get_clicked_button(mouse_pos, screen, data) {
-                            match button_clicked.selector {
-                                SAVE_BUTTON => { // save screenshot functionality
-                                    println!("Button A clicked, sending message for screenshot");
-                                    if let Ok(mut tx) = data.capture_channel.lock() {
-                                        if let Some(tx) = tx.take() {
-                                            // Notify the main thread to capture the screenshot
-                                            if let Some(screen) = self.screen {
-                                                tx.send((data.selection, screen, translation_factor)).expect("Failed to send message to main thread");
-                                                drop(tx);
-                                                Application::global().quit();
-                                            }
+                
+                if let Some(button_clicked) = get_clicked_button(p, data, ctx, self.screen) {
+                    match button_clicked {
+                        SAVE_BUTTON => { // save screenshot functionality
+                            if let Ok(mut tx) = data.capture_channel.lock() {
+                                if let Some(tx) = tx.take() {
+                                    // Notify the main thread to capture the screenshot
+                                    if let Some(screen) = self.screen {
+                                        if let Some(selection) = data.selection {
+                                            tx.send((selection, screen, translation_factor)).expect("Failed to send message to main thread");
+                                            drop(tx);
+                                            Application::global().quit();
                                         }
                                     }
-                                },
-                                BACK_BUTTON => { // exit
-                                    println!("Closing overlay");
-                                    Application::global().quit();
-                                    let exe_path = get_project_src_path();
-                                    println!("{}", exe_path.display());
-                                    let final_path = exe_path.display().to_string() + r"\gui_sg\target\release\gui_sg.exe";
-                                    let _ = Command::new(final_path)
-                                            .spawn()
-                                            .expect("Failed to start gui process");
-                                },
-                                CORNERS_BUTTON => {
-                                    //IF CORNER IS CLICKED, MAKE IT THE NEW STARTING POINT FOR DRAGGING and start painting in refining area
-                                    self.refining = true;
-                                    self.start_point = Some(button_clicked.point);
                                 }
-                                _ => {}
                             }
-                            ctx.set_handled();
-                        } else {
-                            self.start_point = Some(mouse_event.pos);
-                        }
+                        },
+                        BACK_BUTTON => { // exit
+                            Application::global().quit();
+                            if data.back == "t" {
+                                let exe_path = get_project_src_path();
+                                let final_path = exe_path.display().to_string() + r"\gui_sg\target\release\gui_sg.exe";
+                                let _ = Command::new(final_path)
+                                                .spawn()
+                                                .expect("Failed to start gui process");
+                            }
+                        },
+                        CLEANUP_BUTTON => {
+                            data.selection = None;
+                            self.start_point = None;
+                            self.end_point = None;
+                            self.overlay_state = OverlayState::Selecting;
+                            ctx.request_paint();
+                        },
+                        _ => {}
                     }
-                } else {
+                        ctx.set_handled();
+                } else {    
                     self.start_point = Some(mouse_event.pos);
                 }
+                        
                 ctx.set_active(true);
                 ctx.set_handled();
             }
 
             Event::MouseUp(mouse_event) => {
                 self.end_point = Some(mouse_event.pos);
-                
                 ctx.set_active(false);
-                ctx.submit_command(SELECT_AREA.to_owned());
-                ctx.set_handled();
 
-                self.refining = false;
-                self.show_buttons();
+                if let Some(_selection) = data.selection {
+                    self.overlay_state = OverlayState::ButtonsShown;
+                }
                 ctx.request_paint();
             }
 
@@ -247,7 +216,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                     if let Some(start) = self.start_point {
                         self.end_point = Some(mouse_event.pos);
                         let selection = Rect::from_points(start, mouse_event.pos);
-                        data.selection = selection;
+                        data.selection = Some(selection);
                         ctx.request_paint();
                     }
                 }
@@ -264,37 +233,71 @@ impl Widget<AppState> for ScreenshotOverlay {
         let border_color = Color::rgba(1.0, 1.0, 1.0, 0.5);
         let edge_color = Color::rgba(1.0, 1.0, 1.0, 1.0);
 
-     
+        let screens = Screen::all().unwrap();
+
+        //always render
+        let full_rect = size.to_rect();
+        ctx.fill(full_rect, &bg_color);
+
+        // Calculate the position and size of the rectangle to draw the icon
+        //let rectangle_size = Size::new(128.0, 128.0);
+        let icon_size = Size::new(64.0, 64.0);
+        let mid_point_x = size.width / (2.0 * screens.len() as f64) - 64.0;
+        let position = Point::new(mid_point_x, 20.0); // Adjust as needed
     
-        //if user is refining an already selected area:
-        if self.refining {
+
+        //let container_rect = Rect::from_origin_size(position, rectangle_size);
+        let icon_rect = Rect::from_origin_size(position, icon_size);
+        //let rectangle_color = Color::rgba(255.0, 250.0, 250.0, 0.7);
+        //ctx.fill(container_rect, &rectangle_color);
+    
+        let image = ctx
+                .make_image(64, 64, &self.icon_data.quit_icon, ImageFormat::Rgb)
+                .unwrap();
+        ctx.draw_image(&image, icon_rect, InterpolationMode::Bilinear);
+        
+
+        // paint selection
+        if let Some(selection) = data.selection {
+                let result = surrounding_rectangles(size.to_rect().clone(), selection.clone());
+                for element in result {
+                ctx.fill(element, &bg_color);
+                }
+                ctx.fill(selection, &selection_color);
+    
+                let borders = create_border_rectangles(selection, 3.0);
+                for border in borders {
+                ctx.fill(border, &border_color);
+                }
+             
+                if selection.area() > 0.0 {
+                    // paint edges
+                    let edges = create_l_shaped_rectangles(selection, 40.0, 7.0, 25.0);
+                    for edge in edges {
+                        ctx.fill(edge, &edge_color);
+                    } 
+                }
+
+                let icon_size = Size::new(64.0, 64.0);
+                let mid_point_x = size.width / (2.0 * screens.len() as f64) - 64.0;
+                let position = Point::new(mid_point_x, 20.0); // Adjust as needed
             
-          
-        } 
-        else {
-            // paint selection
-            let result = surrounding_rectangles(size.to_rect().clone(), data.selection.clone());
-            for element in result {
-            ctx.fill(element, &bg_color);
-            }
-            ctx.fill(data.selection, &selection_color);
 
-            let borders = create_border_rectangles(data.selection, 3.0);
-            for border in borders {
-            ctx.fill(border, &border_color);
-            }
-         
-            if data.selection.area() > 0.0 {
-                // paint edges
-                let edges = create_l_shaped_rectangles(data.selection, 40.0, 7.0, 25.0);
-                for edge in edges {
-                    ctx.fill(edge, &edge_color);
-                } 
-            }
+                //let container_rect = Rect::from_origin_size(position, rectangle_size);
+                let icon_rect = Rect::from_origin_size(position, icon_size);
+                //let rectangle_color = Color::rgba(255.0, 250.0, 250.0, 0.7);
+                //ctx.fill(container_rect, &rectangle_color);
+            
+                let image = ctx
+                        .make_image(64, 64, &self.icon_data.quit_icon, ImageFormat::Rgb)
+                        .unwrap();
+                ctx.draw_image(&image, icon_rect, InterpolationMode::Bilinear);
         }
-
+        
+        //paint buttons
         if self.overlay_state == OverlayState::ButtonsShown {
             if let Some(screen) = self.screen {
+
                 let icon_size = Size::new(32.0, 32.0);
 
                 //let (left_button_origin, middle_button_origin, right_button_origin) = get_button_position(screen, data, icon_size);
@@ -309,14 +312,8 @@ impl Widget<AppState> for ScreenshotOverlay {
                     .unwrap();
                 ctx.draw_image(&image, left_button_rect, InterpolationMode::Bilinear);
 
-                /*
                 let image = ctx
-                    .make_image(32, 32, &self.icon_data.delay_icon, ImageFormat::Rgb)
-                    .unwrap();
-                ctx.draw_image(&image, middle_button_rect, InterpolationMode::Bilinear);*/
-            
-                let image = ctx
-                    .make_image(32, 32, &self.icon_data.quit_icon, ImageFormat::Rgb)
+                    .make_image(32, 32, &self.icon_data.broom_icon, ImageFormat::Rgb)
                     .unwrap();
                 ctx.draw_image(&image, right_button_rect, InterpolationMode::Bilinear);
 
@@ -341,24 +338,29 @@ impl Widget<AppState> for ScreenshotOverlay {
 }
 
 fn get_button_position(screen: Screen, data: &AppState, icon_size: Size) -> (Point, Point){
-    let center = data.selection.center();
-    let button_spacing = 30.0; //50.0 if 3 buttons
 
-    let space_below = screen.display_info.height as f64 - data.selection.y1;
-    let mut vertical_offset = data.selection.y1 + button_spacing;
+    if let Some(selection) = data.selection {
+        let center = selection.center();
+        let button_spacing = 30.0; //50.0 if 3 buttons
 
-    let available_space_below = space_below >= icon_size.height + button_spacing;
+        let space_below = screen.display_info.height as f64 - selection.y1;
+        let mut vertical_offset = selection.y1 + button_spacing;
 
-    if !available_space_below {
-        vertical_offset = data.selection.y0 - icon_size.height - button_spacing;
+        let available_space_below = space_below >= icon_size.height + button_spacing;
+
+        if !available_space_below {
+            vertical_offset = selection.y0 - icon_size.height - button_spacing;
+        }
+
+        let left_button_origin = Point::new(center.x - icon_size.width - button_spacing, vertical_offset);
+        //let middle_button_origin = Point::new(center.x - icon_size.width / 2.0, vertical_offset);
+        let right_button_origin = Point::new(center.x + button_spacing, vertical_offset);
+
+        //(left_button_origin, middle_button_origin, right_button_origin)
+        (left_button_origin, right_button_origin)
+    } else {
+        (Point::new(0.0, 0.0), Point::new(0.0, 0.0))
     }
-
-    let left_button_origin = Point::new(center.x - icon_size.width - button_spacing, vertical_offset);
-    //let middle_button_origin = Point::new(center.x - icon_size.width / 2.0, vertical_offset);
-    let right_button_origin = Point::new(center.x + button_spacing, vertical_offset);
-
-    //(left_button_origin, middle_button_origin, right_button_origin)
-    (left_button_origin, right_button_origin)
 }
 
 fn surrounding_rectangles(a: Rect, b: Rect) -> Vec<Rect> {

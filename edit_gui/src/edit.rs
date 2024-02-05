@@ -150,9 +150,8 @@ impl Widget<AppState> for Edit {
                                 //writing normally
                                 self.drawing = true;
                                 self.pencil_selected = true;
-                                self.color = (Rgba([0, 0, 0, 255]), 5, 0);
+                                self.color = (Rgba([0, 0, 0, 255]), 5, 1);
                             }
-
                             self.resizing = 0;
                             self.selection = None;
                             ctx.request_paint();

@@ -65,18 +65,7 @@ fn main() {
         std::process::exit(1);
     });
 
-    /*
-    let file_name = file_path.file_name().unwrap_or_else(|| {
-        eprintln!("Invalid file name.");
-        std::process::exit(1);
-    });
-
-    let file_name_str = file_name.to_str().unwrap_or_else(|| {
-        eprintln!("Invalid file name.");
-        std::process::exit(1);
-    });*/
-
-
+    
     let image_data = fs::read(path).expect("Error reading file");
     let dynamic_image = load_from_memory(&image_data).expect("failed to load image");
     let resized_image = resize_image(dynamic_image.clone(), (1200, 500));

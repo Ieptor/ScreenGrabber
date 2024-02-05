@@ -98,7 +98,6 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>) -> Result
             println!("capture finished!");
             break;
         }
-        println!("next screen...");
 
         // update selection parameters...
         selection.x0 = selection.x0 - width as f64;
@@ -255,7 +254,8 @@ fn from_multiple_image_to_single_image(images: Vec<Image>) -> Result<Image> {
     Ok(image)
 }
 
-pub fn show_message_box(title: &str, message: &str, mt: MessageType) {
+pub fn show_message_box(title: &str, message: &str, mtt: Option<MessageType>) {
+    let mt = mtt.unwrap_or(MessageType::Info);
     MessageDialog::new()
         .set_title(title)
         .set_text(message)

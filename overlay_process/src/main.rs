@@ -18,27 +18,32 @@ use image::load_from_memory;
 mod utils;
 use utils::{compute_window_size, capture_screenshot, show_message_box, get_project_src_path};
 
+const BROOM_ICON_DATA: &[u8] = include_bytes!("../../icons/broom.png");
 const SAVE_ICON_DATA: &[u8] = include_bytes!("../../icons/save-icon.png");
-const QUIT_ICON_DATA: &[u8] = include_bytes!("../../icons/quit-icon.png");
+const QUIT_ICON_DATA: &[u8] = include_bytes!("../../icons/back_from_overlay.png");
 
 pub struct IconData {
     save_icon: Vec<u8>,  
     quit_icon: Vec<u8>,  
+    broom_icon: Vec<u8>,
 }
 
 fn initialize_icons() -> anyhow::Result<IconData> {
 
-    let save_icon = load_from_memory(SAVE_ICON_DATA).context("Failed to load save icon")?;
-    let quit_icon= load_from_memory(QUIT_ICON_DATA).context("Failed to load quit icon")?;
+    let broom_icon = load_from_memory(BROOM_ICON_DATA).context("Failed to load save icon")?;
+    let save_icon = load_from_memory(SAVE_ICON_DATA).context("Failed to load quit icon")?;
+    let quit_icon = load_from_memory(QUIT_ICON_DATA).context("Failed to load quit icon")?;
+
 
     Ok(IconData {
         save_icon: save_icon.to_rgb8().to_vec(),
         quit_icon: quit_icon.to_rgb8().to_vec(),
+        broom_icon: broom_icon.to_rgb8().to_vec(),
     })
     
 }
 
-fn run_overlay() -> anyhow::Result<()> {
+fn run_overlay(back: String) -> anyhow::Result<()> {
     
     let screens = Screen::all().context("Impossible to retrieve available screens.")?;
     let screens_arc = Arc::new(screens);
@@ -55,7 +60,7 @@ fn run_overlay() -> anyhow::Result<()> {
         .resizable(false);
 
     // Launch the overlay application
-    let initial_state = AppState::new(screens_arc.clone(), Arc::new(Mutex::new(Some(tx))));
+    let initial_state = AppState::new(screens_arc.clone(), Arc::new(Mutex::new(Some(tx))), back);
     let _overlay_state = AppLauncher::with_window(overlay_window)
         .launch(initial_state)
         .context("Failed to launch application");
@@ -68,7 +73,7 @@ fn run_overlay() -> anyhow::Result<()> {
             //selection.x1 = selection.x1 - translation_factor.abs() as f64;
             match capture_screenshot(selection, Some(screen)) {
                 Ok(path) => { 
-                    show_message_box("Info", "Image successfully saved!", MessageType::Info);
+                    show_message_box("Info", "Image successfully saved!", Some(MessageType::Info));
                     let exe_path = get_project_src_path();
                     let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
                     let _ = Command::new(final_path)
@@ -76,23 +81,30 @@ fn run_overlay() -> anyhow::Result<()> {
                     .spawn()
                     .expect("Failed to start process");            
                 }
-                Err(err) => { show_message_box("Error", &err.to_string(), MessageType::Error) }
+                Err(err) => { show_message_box("Error", &err.to_string(), Some(MessageType::Error)) }
             }
         },
         Err(_) => {
             // Handle other possible errors here if needed.
-            println!("channel closed");
+            eprintln!("channel closed");
         }
     }
-    println!("ending..");
-
+    
     Ok(())
-
 }
 
 fn main (){
-    match run_overlay() {
+    
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: overlay <path>");
+        std::process::exit(1);
+    }
+    let back = &args[1];
+    println!("Received argument: {}", back);
+
+    match run_overlay(back.clone()) {
         Ok(_) => {}
-        Err(err) => { show_message_box("Error", &err.to_string(), MessageType::Error) }
+        Err(err) => { show_message_box("Error", &err.to_string(), Some(MessageType::Error)) }
     }
 }
