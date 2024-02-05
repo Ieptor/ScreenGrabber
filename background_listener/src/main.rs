@@ -153,59 +153,71 @@ pub fn main(){
             let _ = manager.register(hotkey1);
             let _2 = manager.register(hotkey2);
 
-            // Run the win32 event loop on the same thread
-            unsafe{
-                let mut msg: MSG = std::mem::zeroed();
-                
-                loop {
-                    // Check if we need to close
-                    if !*running.lock().unwrap() {
-                        break;
-                    }
-            
-                    // Check for messages or wait for a timeout
-                    let result = winuser::MsgWaitForMultipleObjectsEx(0, std::ptr::null(), 0, winuser::QS_ALLINPUT, winuser::MWMO_INPUTAVAILABLE);
-            
-                    if result == WAIT_OBJECT_0 {
-                        // There are messages to process
-                        while winuser::PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, winuser::PM_REMOVE) != 0 {
-                            winuser::TranslateMessage(&msg);
-                            winuser::DispatchMessageW(&msg);
-                        }
-                    } else if result == WAIT_TIMEOUT {
-                        // Check the mutex after a timeout
+            //Run the win32 event loop on the same thread
+            //Questo loop unsafe è specifico di windows, dentro poi chiama le funzionalità del global hotkey, controllando anche il mutex del system tray se è stata quittata l'app.
+            #[cfg(target_os = "windows")] {
+                unsafe{
+                    let mut msg: MSG = std::mem::zeroed();
+                    
+                    loop {
+                        // Check if we need to close
                         if !*running.lock().unwrap() {
                             break;
                         }
-                    }
-            
-                    // Check for global hotkey events
-                    if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
-                        if event.id == id1 {
-                            let exe_path = get_project_src_path();
-                            let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
-                            let _ = Command::new(final_path)
-                                .arg("f")
-                                .spawn()
-                                .expect("Failed to start overlay process");
-                        } else if event.id == id2 {
-                            let screens = Screen::all().unwrap();
-                            match capture_full_screen_screenshot(Some(screens[0]), true) {
-                                Ok(path) => {
-                                    let exe_path = get_project_src_path();
-                                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
-                                    let _ = Command::new(final_path)
-                                    .arg(&path)
+                
+                        // Check for messages or wait for a timeout
+                        let result = winuser::MsgWaitForMultipleObjectsEx(0, std::ptr::null(), 0, winuser::QS_ALLINPUT, winuser::MWMO_INPUTAVAILABLE);
+                
+                        if result == WAIT_OBJECT_0 {
+                            // There are messages to process
+                            while winuser::PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, winuser::PM_REMOVE) != 0 {
+                                winuser::TranslateMessage(&msg);
+                                winuser::DispatchMessageW(&msg);
+                            }
+                        } else if result == WAIT_TIMEOUT {
+                            // Check the mutex after a timeout
+                            if !*running.lock().unwrap() {
+                                break;
+                            }
+                        }
+                
+                        // Check for global hotkey events
+                        if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+                            if event.id == id1 {
+                                let exe_path = get_project_src_path();
+                                //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
+                                let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                                let _ = Command::new(final_path)
+                                    .arg("f")
                                     .spawn()
-                                    .expect("Failed to start process");
-                                }
-                                Err(err) => {
-                                    eprintln!("Failed to capture screenshot: {}", err);
+                                    .expect("Failed to start overlay process");
+                            } else if event.id == id2 {
+                                let screens = Screen::all().unwrap();
+                                match capture_full_screen_screenshot(Some(screens[0]), true) {
+                                    Ok(path) => {
+                                        let exe_path = get_project_src_path();
+                                        //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
+                                        let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                                        let _ = Command::new(final_path)
+                                        .arg(&path)
+                                        .spawn()
+                                        .expect("Failed to start process");
+                                    }
+                                    Err(err) => {
+                                        eprintln!("Failed to capture screenshot: {}", err);
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
+        
+           
+            #[cfg(target_os = "linux")] {
+                //creare qui un loop per linux
+                //deve fare le stesse cose (loopare controllando il mutex se deve o no fare break e checkare il globalhotkeyevent)
+                //esempio su linux nella doc: https://github.com/tauri-apps/global-hotkey/blob/dev/examples/tao.rs
             }
         }
     }
