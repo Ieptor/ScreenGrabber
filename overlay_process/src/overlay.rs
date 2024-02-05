@@ -177,6 +177,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                             Application::global().quit();
                             if data.back == "t" {
                                 let exe_path = get_project_src_path();
+                                //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
                                 let final_path = exe_path.display().to_string() + r"\gui_sg\target\release\gui_sg.exe";
                                 let _ = Command::new(final_path)
                                                 .spawn()

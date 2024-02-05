@@ -88,6 +88,7 @@ fn main() {
         if GLOBAL_STATE == 1 {
                         // Launch the overlay binary as a new process
                         let exe_path = get_project_src_path();
+                        //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
                         let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
                         let _ = Command::new(final_path)
                             .arg("t")
@@ -97,6 +98,7 @@ fn main() {
             match capture_full_screen_screenshot(Some(screens[0]), true){
                 Ok(path) => {
                     let exe_path = get_project_src_path();
+                    //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
                     let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
                     let _ = Command::new(final_path)
                     .arg(&path)
@@ -171,16 +173,9 @@ impl druid::AppDelegate<MainState> for Delegate {
             Handled::Yes
         }  else if cmd.is(RUN_IN_BACKGROUND){
             Application::global().quit();
-            //run the background shortcut listener
-            /*
-                let project_dir = get_project_src_path();
-                let _ = Command::new("cmd")
-                .current_dir(&project_dir)
-                .args(&["/C", "start", r".\background_listener\target\release\background_listener.exe"])
-                .spawn()
-                .expect("Failed to start background listener");
-            */
+      
             let exe_path = get_project_src_path();
+            //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
             let final_path = exe_path.display().to_string() + r"\background_listener\target\release\background_listener.exe";
             let _ = Command::new(final_path)
                     .spawn()
