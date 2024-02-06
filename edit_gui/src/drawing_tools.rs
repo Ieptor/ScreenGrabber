@@ -23,19 +23,41 @@ impl Stroke {
     pub fn draw(&self, size: (u32, u32)) -> RgbaImage {
         let mut image = RgbaImage::new(size.0, size.1); 
     
-        for point in &self.points {
-            for i in 0..self.width {
-                for j in 0..self.width {
-                    let x = point.x + (i as f64);
-                    let y = point.y + (j as f64);
-    
-                    if x < image.width().into() && y < image.height() as f64 {
-                        image.put_pixel(x as u32, y as u32, self.color);
+        // Iterate over each pair of adjacent points
+        for i in 0..self.points.len() - 1 {
+            let p1 = self.points[i];
+            let p2 = self.points[i + 1];
+            
+            // Calculate the direction vector between the points
+            let delta_x = p2.x - p1.x;
+            let delta_y = p2.y - p1.y;
+            
+            // Calculate the length of the line segment
+            let length = (delta_x.powi(2) + delta_y.powi(2)).sqrt();
+            
+            // Normalize the direction vector
+            let step_x = delta_x / length;
+            let step_y = delta_y / length;
+            
+            // Iterate over the length of the line segment
+            for t in 0..=length as u32 {
+                // Calculate the position along the line segment
+                let x = p1.x + step_x * t as f64;
+                let y = p1.y + step_y * t as f64;
+                
+                // Draw a pixel at the calculated position
+                for i in 0..self.width {
+                    for j in 0..self.width {
+                        let px = (x + i as f64) as u32;
+                        let py = (y + j as f64) as u32;
+                        
+                        if px < image.width() && py < image.height() {
+                            image.put_pixel(px, py, self.color);
+                        }
                     }
                 }
             }
         }
-    
         image
     }
 

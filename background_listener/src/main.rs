@@ -100,7 +100,7 @@ pub fn main(){
     let helper_str = format!(
         "The program is now listening in the background.\n\
         Click ({}) to open the screenshot overlay\n\
-        Blick ({}) to take a fullscreen screenshot.",
+        Click ({}) to take a fullscreen screenshot.",
         shortcut_string,
         shortcut_fs
     );
@@ -113,16 +113,29 @@ pub fn main(){
     let mut app = Application::new().unwrap();
 
     let icon_path = get_project_src_path();
+    //path linux?
     let final_path = icon_path.display().to_string() + r"\background_listener\src\icon.ico";
      // Set icon
     app.set_icon_from_file(&final_path).unwrap();
+
+
+    app.add_menu_item("See Hotkeys", move |_window| {
+        //this does not return an actual event to be catched
+        let helper_str = format!(
+            "Click ({}) to open the screenshot overlay\n\
+            Click ({}) to take a fullscreen screenshot.",
+            shortcut_string,
+            shortcut_fs
+        );
+        show_message_box("See Hotkeys", &helper_str, None);
+        Ok::<(), systray::Error>(()) // Specify the error type explicitly
+    }).unwrap();
 
     // Add a quit item to the menu
     app.add_menu_item("Quit", |window| {
         window.quit();
         Ok::<(), systray::Error>(()) // Specify the error type explicitly
     }).unwrap();
-
 
     //needed to notify closing in systray to actual listener closing
     let running = Arc::new(Mutex::new(true));

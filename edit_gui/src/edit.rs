@@ -142,15 +142,15 @@ impl Widget<AppState> for Edit {
                             } else if self.highlighting { 
                                 self.drawing = true;
                                 //set orange highlighter
-                                self.color = (Rgba([255, 165, 0, 128]), 20, 1);
+                                self.color = (Rgba([255, 165, 0, 128]), 18, 1);
                             } else if self.pencil_selected  {
                                 //writing, set small
-                                self.color = (Rgba([0, 0, 0, 255]), 5, 1);
+                                self.color = (Rgba([0, 0, 0, 255]), 3, 1);
                             } else {
                                 //writing normally
                                 self.drawing = true;
                                 self.pencil_selected = true;
-                                self.color = (Rgba([0, 0, 0, 255]), 5, 1);
+                                self.color = (Rgba([0, 0, 0, 255]), 3, 1);
                             }
                             self.resizing = 0;
                             self.selection = None;
@@ -163,15 +163,15 @@ impl Widget<AppState> for Edit {
                             } else if self.highlighting {
                                 self.drawing = true;
                                 //set yellow highlighter
-                                self.color = (Rgba([255, 255, 0, 128]), 20, 2);
+                                self.color = (Rgba([255, 255, 0, 128]), 18, 2);
                             } else if self.pencil_selected  {
                                 //medium pencil
-                                self.color = (Rgba([0, 0, 0, 255]), 10, 2);
+                                self.color = (Rgba([0, 0, 0, 255]), 6, 2);
                             }  else {
                                 //initialize highlighting process, default value = orange
                                 self.drawing = true;
                                 self.highlighting = true;
-                                self.color = (Rgba([255, 165, 0, 128]), 20, 1);
+                                self.color = (Rgba([255, 165, 0, 128]), 18, 1);
                             }
                             self.resizing = 0;
                             self.selection = None;
@@ -183,10 +183,10 @@ impl Widget<AppState> for Edit {
                                 self.choosen_shape = 2; //2-> triangle
                             } else if self.highlighting {
                                 self.drawing = true;
-                                self.color = (Rgba([0, 255, 0, 128]), 20, 3);
+                                self.color = (Rgba([0, 255, 0, 128]), 18, 3);
                             } else if self.pencil_selected {
                                 //large pencil
-                                self.color = (Rgba([0, 0, 0, 255]), 15, 3);
+                                self.color = (Rgba([0, 0, 0, 255]), 9, 3);
                             } else {
                                 self.adding_shapes = true;
                                 self.drawing = false;
@@ -224,7 +224,7 @@ impl Widget<AppState> for Edit {
                                 self.resizing = 1;
                                 ctx.request_paint();
                             } else {
-                                //resize functrionality
+                                //resize functionality
                                 self.resizing = 1;
                                 self.drawing = false;
                                 //dont want to catch mouse up now:
