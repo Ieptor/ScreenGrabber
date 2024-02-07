@@ -473,7 +473,6 @@ impl<W: Widget<String>> Controller<String, W> for ShortcutController {
             }
             _ => {}
         }
-        // Delegate other events to the child
         match event {
             Event::KeyDown(_) => {},
             _ => {child.event(ctx, event, data, env);}

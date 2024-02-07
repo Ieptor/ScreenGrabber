@@ -184,10 +184,22 @@ fn handle_save_screenshot(screen_shoot: Image) -> Result<PathBuf> {
         let png_bytes = screen_shoot.to_png()?;
         let png_image = image::load_from_memory(&png_bytes)?;
         let rgb_image: RgbImage = png_image.to_rgb8();
-        let format = ImageFormat::from_path(output_path)?;
 
-        // Salva il file nel sistema di file
-        rgb_image.save_with_format(output_path, format)?;
+        //In windows it works, not in linux
+        if cfg!(target_os = "windows"){
+            let format = ImageFormat::from_path(output_path)?;
+            rgb_image.save_with_format(output_path, format)?;
+        } else {
+            //Da provare, dovrebbe tornare un Option
+            match ImageFormat::from_extension(output_path) {
+                Some(format) => {
+                    rgb_image.save_with_format(output_path, format)?;
+                }
+                None => {
+                    println!("No format found");
+                }
+            }
+        }
 
         // Salva negli appunti
         save_into_clipboard(output_path).context("Error copying into the clipboard")?;

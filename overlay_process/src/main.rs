@@ -75,13 +75,16 @@ fn run_overlay(back: String) -> anyhow::Result<()> {
                 Ok(path) => { 
                     show_message_box("Info", "Image successfully saved!", Some(MessageType::Info));
                     let exe_path = get_project_src_path();
-                    //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                    let mut final_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui.exe";
-                    if cfg!(linux){
-                        final_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui";
+                    let mut real_path = "".to_string();
+
+                    if cfg!(target_os = "windows"){
+                        real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui.exe";
                     }
-                    
-                    let _ = Command::new(final_path)
+                    if cfg!(target_os = "linux"){
+                        real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui";
+                    }
+
+                    let _ = Command::new(real_path)
                     .arg(&path)
                     .spawn()
                     .expect("Failed to start process");            

@@ -90,16 +90,14 @@ fn main() {
                         // Launch the overlay binary as a new process
                         let mut exe_path = get_project_src_path();
                         let mut real_path = "".to_string();
-                        //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
+
                         if cfg!(target_os = "windows"){
-                            exe_path = exe_path.join(r"\overlay_process\target\release\overlay_process.exe");
+                            real_path = exe_path.display().to_string() + r"/overlay_process/target/release/overlay_process.exe";
                         }
                         if cfg!(target_os = "linux"){
-                            println!("{:?}", exe_path);
                             real_path = exe_path.display().to_string() + r"/overlay_process/target/release/overlay_process";
-                            //exe_path.push("/overlay_process/target/release/overlay_process");
-                            println!("{:?}", exe_path);
                         }
+
                         let _ = Command::new(real_path)
                             .arg("t")
                             .spawn()
@@ -108,13 +106,16 @@ fn main() {
             match capture_full_screen_screenshot(Some(screens[0]), true){
                 Ok(path) => {
                     let exe_path = get_project_src_path();
-                    //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                    let mut final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
-                    if cfg!(linux){
-                        final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui";
-                    }
-                    
-                    let _ = Command::new(final_path)
+                    let mut real_path = "".to_string();
+
+                        if cfg!(target_os = "windows"){
+                            real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui.exe";
+                        }
+                        if cfg!(target_os = "linux"){
+                            real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui";
+                        }
+                        
+                    let _ = Command::new(real_path)
                     .arg(&path)
                     .spawn()
                     .expect("Failed to start process");
@@ -189,12 +190,16 @@ impl druid::AppDelegate<MainState> for Delegate {
             Application::global().quit();
       
             let exe_path = get_project_src_path();
-            //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-            let mut final_path = exe_path.display().to_string() + r"\background_listener\target\release\background_listener.exe";
-            if cfg!(linux){
-                final_path = exe_path.display().to_string() + r"\background_listener\target\release\background_listener";
-            } 
-            let _ = Command::new(final_path)
+            let mut real_path = "".to_string();
+
+            if cfg!(target_os = "windows"){
+                real_path = exe_path.display().to_string() + r"/background_listener/target/release/background_listener.exe";
+            }
+            if cfg!(target_os = "linux"){
+                 real_path = exe_path.display().to_string() + r"/background_listener/target/release/background_listener";
+            }
+
+            let _ = Command::new(real_path)
                     .spawn()
                     .expect("Failed to start background listener");
             Handled::Yes
