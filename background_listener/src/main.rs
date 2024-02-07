@@ -2,9 +2,14 @@
 
 //external dependencies
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, hotkey::{HotKey, Modifiers, Code}};
+
+#[cfg(target_os = "windows")] 
 use winapi::um::winuser::{self, MSG};
+#[cfg(target_os = "windows")] 
 use winapi::shared::winerror::WAIT_TIMEOUT;
+#[cfg(target_os = "windows")] 
 use winapi::um::winbase::WAIT_OBJECT_0;
+
 
 //internal dependencies
 mod utils;
@@ -18,7 +23,6 @@ extern crate systray;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use systray::{Application};
-use tao::event_loop::{ControlFlow, EventLoopBuilder};
 
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
@@ -238,15 +242,21 @@ pub fn main(){
                 //creare qui un loop per linux
                 //deve fare le stesse cose (loopare controllando il mutex se deve o no fare break e checkare il globalhotkeyevent)
                 //esempio su linux nella doc: https://github.com/tauri-apps/global-hotkey/blob/dev/examples/tao.rs
-
+                
 
                 loop {
+
+                    // Check if we need to close
+                    if !*running.lock().unwrap() {
+                        break;
+                    }
+
                     // Check for global hotkey events
                     if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+                        println!("{:?}", event);
                         if event.id == id1 {
                             let exe_path = get_project_src_path();
-                            //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                            let mut final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                            let mut final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process";
                             let _ = Command::new(final_path)
                                 .arg("f")
                                 .spawn()
@@ -256,13 +266,7 @@ pub fn main(){
                             match capture_full_screen_screenshot(Some(screens[0]), true) {
                                 Ok(path) => {
                                     let exe_path = get_project_src_path();
-                                    //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                                    let mut final_path;
-                                    if cfg!(windows){
-                                        final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
-                                    } else if cfg!(linux){
-                                        final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui";
-                                    }
+                                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui";
                                     let _ = Command::new(final_path)
                                     .arg(&path)
                                     .spawn()
