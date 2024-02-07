@@ -89,7 +89,11 @@ fn main() {
                         // Launch the overlay binary as a new process
                         let exe_path = get_project_src_path();
                         //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                        let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                        if cfg!(windows){
+                            let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                        } else if cfg!(linux){
+                            let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process";
+                        }
                         let _ = Command::new(final_path)
                             .arg("t")
                             .spawn()
@@ -99,7 +103,12 @@ fn main() {
                 Ok(path) => {
                     let exe_path = get_project_src_path();
                     //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                    let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                    if cfg!(windows){
+                        let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                    } else if cfg!(linux){
+                        let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui";
+                    }
+                    
                     let _ = Command::new(final_path)
                     .arg(&path)
                     .spawn()
@@ -176,7 +185,11 @@ impl druid::AppDelegate<MainState> for Delegate {
       
             let exe_path = get_project_src_path();
             //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-            let final_path = exe_path.display().to_string() + r"\background_listener\target\release\background_listener.exe";
+            if cfg!(windows){
+                let final_path = exe_path.display().to_string() + r"\background_listener\target\release\background_listener.exe";
+            } else if cfg!(linux){
+                let final_path = exe_path.display().to_string() + r"\background_listener\target\release\background_listener";
+            }
             let _ = Command::new(final_path)
                     .spawn()
                     .expect("Failed to start background listener");
