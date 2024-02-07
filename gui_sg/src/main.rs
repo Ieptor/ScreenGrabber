@@ -9,6 +9,7 @@ use screenshots::Screen;
 mod custom_widgets;
 use custom_widgets::{initial_layout, save_path_layout, shortcut_layout};
 
+use std::path::Path;
 mod utils;
 use utils::{read_config_file};
 
@@ -87,13 +88,19 @@ fn main() {
         thread::sleep(Duration::from_secs(DELAY_VALUE as u64));
         if GLOBAL_STATE == 1 {
                         // Launch the overlay binary as a new process
-                        let exe_path = get_project_src_path();
+                        let mut exe_path = get_project_src_path();
+                        let mut real_path = "".to_string();
                         //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                        let mut final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
-                        if cfg!(linux){
-                            final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process";
+                        if cfg!(target_os = "windows"){
+                            exe_path = exe_path.join(r"\overlay_process\target\release\overlay_process.exe");
                         }
-                        let _ = Command::new(final_path)
+                        if cfg!(target_os = "linux"){
+                            println!("{:?}", exe_path);
+                            real_path = exe_path.display().to_string() + r"/overlay_process/target/release/overlay_process";
+                            //exe_path.push("/overlay_process/target/release/overlay_process");
+                            println!("{:?}", exe_path);
+                        }
+                        let _ = Command::new(real_path)
                             .arg("t")
                             .spawn()
                             .expect("Failed to start overlay process");
