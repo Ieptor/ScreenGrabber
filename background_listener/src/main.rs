@@ -18,6 +18,8 @@ extern crate systray;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use systray::{Application};
+use tao::event_loop::{ControlFlow, EventLoopBuilder};
+
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 
@@ -113,7 +115,7 @@ pub fn main(){
     let mut app = Application::new().unwrap();
 
     let icon_path = get_project_src_path();
-    //path linux?
+    //path linux? no :p
     let final_path = icon_path.display().to_string() + r"\background_listener\src\icon.ico";
      // Set icon
     app.set_icon_from_file(&final_path).unwrap();
@@ -199,7 +201,7 @@ pub fn main(){
                             if event.id == id1 {
                                 let exe_path = get_project_src_path();
                                 //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                                let final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                                let mut final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
                                 let _ = Command::new(final_path)
                                     .arg("f")
                                     .spawn()
@@ -210,7 +212,12 @@ pub fn main(){
                                     Ok(path) => {
                                         let exe_path = get_project_src_path();
                                         //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
-                                        let final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                                        let mut final_path;
+                                        if cfg!(windows){
+                                            final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                                        } else if cfg!(linux){
+                                            final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui";
+                                        }
                                         let _ = Command::new(final_path)
                                         .arg(&path)
                                         .spawn()
@@ -231,6 +238,44 @@ pub fn main(){
                 //creare qui un loop per linux
                 //deve fare le stesse cose (loopare controllando il mutex se deve o no fare break e checkare il globalhotkeyevent)
                 //esempio su linux nella doc: https://github.com/tauri-apps/global-hotkey/blob/dev/examples/tao.rs
+
+
+                loop {
+                    // Check for global hotkey events
+                    if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+                        if event.id == id1 {
+                            let exe_path = get_project_src_path();
+                            //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
+                            let mut final_path = exe_path.display().to_string() + r"\overlay_process\target\release\overlay_process.exe";
+                            let _ = Command::new(final_path)
+                                .arg("f")
+                                .spawn()
+                                .expect("Failed to start overlay process");
+                        } else if event.id == id2 {
+                            let screens = Screen::all().unwrap();
+                            match capture_full_screen_screenshot(Some(screens[0]), true) {
+                                Ok(path) => {
+                                    let exe_path = get_project_src_path();
+                                    //questo percorso potrebbe rompersi su linux, sia per gli slash che per il .exe
+                                    let mut final_path;
+                                    if cfg!(windows){
+                                        final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui.exe";
+                                    } else if cfg!(linux){
+                                        final_path = exe_path.display().to_string() + r"\edit_gui\target\release\edit_gui";
+                                    }
+                                    let _ = Command::new(final_path)
+                                    .arg(&path)
+                                    .spawn()
+                                    .expect("Failed to start process");
+                                }
+                                Err(err) => {
+                                    eprintln!("Failed to capture screenshot: {}", err);
+                                }
+                            }
+                        }
+                    }
+                }
+
             }
         }
     }
