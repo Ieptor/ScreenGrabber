@@ -213,7 +213,7 @@ impl Widget<MainState> for IconButton {
             } else if label_text == "Path" {
                 offset_x = 12.0;
                 offset_y = 6.0;
-            } else if label_text == "Shortcuts" {
+            } else if label_text == "Hotkeys" {
                 offset_x = 1.0;
                 offset_y = 6.0;
             } else if label_text == "Delay" {
@@ -276,7 +276,7 @@ pub fn create_button_row() -> impl Widget<MainState> {
         .with_spacer(60.0)
         .with_child(IconButton::new(save_icon_svg, "Path".to_string(), PATH_GUI, false))
         .with_spacer(60.0)
-        .with_child(IconButton::new(shortcut_icon_svg, "Shortcuts".to_string(), SHORTCUT_GUI, false))
+        .with_child(IconButton::new(shortcut_icon_svg, "Hotkeys".to_string(), SHORTCUT_GUI, false))
         .with_spacer(60.0)
         .with_child(IconButton::new(delay_icon, "Delay".to_string(), HOME, false))
         .padding(10.0)
@@ -368,7 +368,7 @@ pub fn shortcut_layout() -> impl Widget<MainState> {
     let button_row = create_button_row();
 
     let label = Label::new(|_data: &MainState, _env: &_| {
-        format!("Shortcuts: (ctrl + 'key')")
+        format!("Hotkeys: (ctrl + 'key')")
     }).with_text_color(Color::BLACK);
 
 

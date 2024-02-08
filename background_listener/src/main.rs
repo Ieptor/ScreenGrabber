@@ -1,7 +1,7 @@
 #![windows_subsystem = "windows"]
 
 //external dependencies
-use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, hotkey::{HotKey, Modifiers, Code}};
+use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::{HotKey, Modifiers, Code}};
 
 #[cfg(target_os = "windows")] 
 use winapi::um::winuser::{self, MSG};
@@ -18,11 +18,14 @@ use screenshots::Screen;
 use std::process::Command;
 use overlay_process::utils::{capture_full_screen_screenshot, get_config_file_path, get_project_src_path, show_message_box};
 
+#[cfg(target_os = "windows")] 
 extern crate systray;
+#[cfg(target_os = "windows")] 
+use systray::{Application};
+
 
 use std::sync::{Arc, Mutex};
 use std::thread;
-use systray::{Application};
 
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
@@ -88,7 +91,8 @@ pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 
 
 
-pub fn main(){   
+pub fn main(){  
+ 
     let config_path = get_config_file_path();
     let mut shortcut_string = "ctrl + k".to_string(); //default value to be override
     let mut shortcut_fs = "ctrl + f".to_string();
@@ -115,52 +119,55 @@ pub fn main(){
     let shortcut_command = parse_hotkey(shortcut_string.clone());
     let shortcut_fs_command = parse_hotkey(shortcut_fs.clone());
 
-    // put app in systray
-    let mut app = Application::new().unwrap();
-
-    let icon_path = get_project_src_path();
-    //path linux? no :p FORSE SI PER ESTENSIONE .ICO NON TROVATA??
-    let final_path = icon_path.display().to_string() + r"\background_listener\src\icon.ico";
-
-     // Set icon
-    app.set_icon_from_file(&final_path).unwrap();
-
-
-    app.add_menu_item("See Hotkeys", move |_window| {
-        //this does not return an actual event to be catched
-        let helper_str = format!(
-            "Click ({}) to open the screenshot overlay\n\
-            Click ({}) to take a fullscreen screenshot.",
-            shortcut_string,
-            shortcut_fs
-        );
-        show_message_box("See Hotkeys", &helper_str, None);
-        Ok::<(), systray::Error>(()) // Specify the error type explicitly
-    }).unwrap();
-
-    // Add a quit item to the menu
-    app.add_menu_item("Quit", |window| {
-        window.quit();
-        Ok::<(), systray::Error>(()) // Specify the error type explicitly
-    }).unwrap();
 
     //needed to notify closing in systray to actual listener closing
     let running = Arc::new(Mutex::new(true));
     let running_clone = Arc::clone(&running);
 
-    let handle = thread::spawn(move || {
-        loop {
-            if let Ok(event) = app.wait_for_message() {
-                match event {
-                    () => {
-                        //app has been closed, remove listener
-                        *running_clone.lock().unwrap() = false; // Use cloned Arc inside the closure
-                        break;
-                    },
+    #[cfg(target_os = "windows")] {
+        // put app in systray
+        let mut app = Application::new().unwrap();
+
+        let icon_path = get_project_src_path();
+        //path linux? no :p FORSE SI PER ESTENSIONE .ICO NON TROVATA??
+        let final_path = icon_path.display().to_string() + r"\background_listener\src\icon.ico";
+
+        // Set icon
+        app.set_icon_from_file(&final_path).unwrap();
+
+
+        app.add_menu_item("See Hotkeys", move |_window| {
+            //this does not return an actual event to be catched
+            let helper_str = format!(
+                "Click ({}) to open the screenshot overlay\n\
+                Click ({}) to take a fullscreen screenshot.",
+                shortcut_string,
+                shortcut_fs
+            );
+            show_message_box("See Hotkeys", &helper_str, None);
+            Ok::<(), systray::Error>(()) // Specify the error type explicitly
+        }).unwrap();
+
+        // Add a quit item to the menu
+        app.add_menu_item("Quit", |window| {
+            window.quit();
+            Ok::<(), systray::Error>(()) // Specify the error type explicitly
+        }).unwrap();
+
+        let handle = thread::spawn(move || {
+            loop {
+                if let Ok(event) = app.wait_for_message() {
+                    match event {
+                        () => {
+                            //app has been closed, remove listener
+                            *running_clone.lock().unwrap() = false; // Use cloned Arc inside the closure
+                            break;
+                        },
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 
     let exe_path = get_project_src_path();
     let mut overlay_path = "".to_string();
@@ -175,6 +182,7 @@ pub fn main(){
         edit_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui";
     }
 
+
     if let Some((modifier, key1)) = shortcut_command {
         if let Some((modifier2, key2)) = shortcut_fs_command {
             let manager = GlobalHotKeyManager::new().unwrap();
@@ -185,6 +193,7 @@ pub fn main(){
             let id2 = hotkey2.id();
             let _ = manager.register(hotkey1);
             let _2 = manager.register(hotkey2);
+
 
             //Run the win32 event loop on the same thread
             //Questo loop unsafe è specifico di windows, dentro poi chiama le funzionalità del global hotkey, controllando anche il mutex del system tray se è stata quittata l'app.
@@ -240,24 +249,23 @@ pub fn main(){
                 }
             }
         
-           
+
             #[cfg(target_os = "linux")] {
 
                 loop {
+
                     // Check if we need to close
                     if !*running.lock().unwrap() {
                         break;
                     }
-
                     // Check for global hotkey events
                     if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
-                        println!("{:?}", event);
-                        if event.id == id1 {
+                        if event.id == id1 && event.state == HotKeyState::Released {
                             let _ = Command::new(overlay_path.clone())
                                 .arg("f")
                                 .spawn()
                                 .expect("Failed to start overlay process");
-                        } else if event.id == id2 {
+                        } else if event.id == id2 && event.state == HotKeyState::Released {
                             let screens = Screen::all().unwrap();
                             match capture_full_screen_screenshot(Some(screens[0]), true) {
                                 Ok(path) => {
@@ -276,5 +284,6 @@ pub fn main(){
             }
         }
     }
-    handle.join().unwrap();
+    
+    //handle.join().unwrap();
 }

@@ -174,22 +174,16 @@ impl Widget<AppState> for ScreenshotOverlay {
                             }
                         },
                         BACK_BUTTON => { // exit
-                            Application::global().quit();
-                            if data.back == "t" {
-                                let exe_path = get_project_src_path();
-                                let mut real_path = "".to_string();
-
-                                if cfg!(target_os = "windows"){
-                                    real_path = exe_path.display().to_string() + r"/gui_sg/target/release/gui_sg.exe";
+                            if let Ok(mut tx) = data.capture_channel.lock() {
+                                if let Some(tx) = tx.take() {
+                                    if let Some(screen) = self.screen {
+                                        tx.send((Rect::ZERO, screen, 0)).expect("Failed to send message to main thread");
+                                        drop(tx);
+                                        Application::global().quit();
+                                    }
                                 }
-                                if cfg!(target_os = "linux"){
-                                    real_path = exe_path.display().to_string() + r"/gui_sg/target/release/gui_sg";
-                                }
-
-                                let _ = Command::new(real_path)
-                                                .spawn()
-                                                .expect("Failed to start gui process");
                             }
+                            
                         },
                         CLEANUP_BUTTON => {
                             data.selection = None;
@@ -242,11 +236,10 @@ impl Widget<AppState> for ScreenshotOverlay {
         let edge_color = Color::rgba(1.0, 1.0, 1.0, 1.0);
 
         let screens = Screen::all().unwrap();
-
-        //always render
-        let full_rect = size.to_rect();
-        ctx.fill(full_rect, &bg_color);
-
+        if data.selection == None {
+            let full_rect = size.to_rect();
+            ctx.fill(full_rect, &bg_color);
+        }
         // Calculate the position and size of the rectangle to draw the icon
         //let rectangle_size = Size::new(128.0, 128.0);
         let icon_size = Size::new(64.0, 64.0);
@@ -300,8 +293,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                         .make_image(64, 64, &self.icon_data.quit_icon, ImageFormat::Rgb)
                         .unwrap();
                 ctx.draw_image(&image, icon_rect, InterpolationMode::Bilinear);
-        }
-        
+        } 
         //paint buttons
         if self.overlay_state == OverlayState::ButtonsShown {
             if let Some(screen) = self.screen {

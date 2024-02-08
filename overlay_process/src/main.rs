@@ -60,36 +60,52 @@ fn run_overlay(back: String) -> anyhow::Result<()> {
         .resizable(false);
 
     // Launch the overlay application
-    let initial_state = AppState::new(screens_arc.clone(), Arc::new(Mutex::new(Some(tx))), back);
+    let initial_state = AppState::new(screens_arc.clone(), Arc::new(Mutex::new(Some(tx.clone()))), back.clone());
     let _overlay_state = AppLauncher::with_window(overlay_window)
         .launch(initial_state)
         .context("Failed to launch application");
 
-
     thread::sleep(Duration::from_secs(1));
+
     match rx.recv() {
         Ok((selection, screen, _translation_factor)) => {
-            //selection.x0 = selection.x0 - translation_factor.abs() as f64;
-            //selection.x1 = selection.x1 - translation_factor.abs() as f64;
-            match capture_screenshot(selection, Some(screen)) {
-                Ok(path) => { 
-                    show_message_box("Info", "Image successfully saved!", Some(MessageType::Info));
+            if selection == Rect::ZERO {
+                if back == "t" {
                     let exe_path = get_project_src_path();
                     let mut real_path = "".to_string();
 
                     if cfg!(target_os = "windows"){
-                        real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui.exe";
+                        real_path = exe_path.display().to_string() + r"/gui_sg/target/release/gui_sg.exe";
                     }
                     if cfg!(target_os = "linux"){
-                        real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui";
+                        real_path = exe_path.display().to_string() + r"/gui_sg/target/release/gui_sg";
                     }
 
                     let _ = Command::new(real_path)
-                    .arg(&path)
-                    .spawn()
-                    .expect("Failed to start process");            
+                                    .spawn()
+                                    .expect("Failed to start gui process");
                 }
-                Err(err) => { show_message_box("Error", &err.to_string(), Some(MessageType::Error)) }
+            } else {
+                match capture_screenshot(selection, Some(screen)) {
+                    Ok(path) => { 
+                        show_message_box("Info", "Image successfully saved!", Some(MessageType::Info));
+                        let exe_path = get_project_src_path();
+                        let mut real_path = "".to_string();
+
+                        if cfg!(target_os = "windows"){
+                            real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui.exe";
+                        }
+                        if cfg!(target_os = "linux"){
+                            real_path = exe_path.display().to_string() + r"/edit_gui/target/release/edit_gui";
+                        }
+
+                        let _ = Command::new(real_path)
+                        .arg(&path)
+                        .spawn()
+                        .expect("Failed to start process");            
+                    }
+                    Err(err) => { show_message_box("Error", &err.to_string(), Some(MessageType::Error)) }
+                }
             }
         },
         Err(_) => {
@@ -97,7 +113,7 @@ fn run_overlay(back: String) -> anyhow::Result<()> {
             eprintln!("channel closed");
         }
     }
-    
+
     Ok(())
 }
 

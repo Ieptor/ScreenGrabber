@@ -9,12 +9,15 @@ use image::{ImageFormat, RgbImage, GenericImageView};
 use anyhow::{Result, anyhow};
 use std::env;
 
-extern crate clipboard;
+extern crate arboard;
 extern crate image;
 
 use anyhow::{bail, Context};
 use native_dialog::{FileDialog, MessageDialog, MessageType};
 use screenshots::Image;
+
+use std::process::{Command, Stdio};
+use std::io::Write;
 
 pub fn compute_window_size()-> anyhow::Result<(i32, i32, i32, i32)> {
     let screens = Screen::all().context("Impossible to retrieve available screens.")?;
@@ -176,7 +179,8 @@ fn handle_save_screenshot(screen_shoot: Image) -> Result<PathBuf> {
         .set_location(Path::new(&path))
         .set_filename("default")
         .show_save_single_file()
-        .context("Failed to show the save file dialog")?;
+        .unwrap();
+        //.context("Failed to show the save file dialog")?;
 
     // Converti in RGB8 e salva nel formato desiderato
     if let Some(file_directory) = file_directory {
@@ -186,21 +190,9 @@ fn handle_save_screenshot(screen_shoot: Image) -> Result<PathBuf> {
         let rgb_image: RgbImage = png_image.to_rgb8();
 
         //In windows it works, not in linux
-        if cfg!(target_os = "windows"){
-            let format = ImageFormat::from_path(output_path)?;
-            rgb_image.save_with_format(output_path, format)?;
-        } else {
-            //Da provare, dovrebbe tornare un Option
-            match ImageFormat::from_extension(output_path) {
-                Some(format) => {
-                    rgb_image.save_with_format(output_path, format)?;
-                }
-                None => {
-                    println!("No format found");
-                }
-            }
-        }
-
+        let format = ImageFormat::from_path(output_path)?;
+        rgb_image.save_with_format(output_path, format)?;
+        
         // Salva negli appunti
         save_into_clipboard(output_path).context("Error copying into the clipboard")?;
 
@@ -227,9 +219,30 @@ pub fn save_into_clipboard(output_path: &Path) -> anyhow::Result<()> {
         bytes: Cow::from(image.to_rgba8().into_raw()),
     };
 
-    clipboard.set_image(img)
-        .with_context(|| "Error copying into the clipboard")?;
+    if cfg!(target_os = "linux"){
+        let output = Command::new("xclip")
+        .arg("-selection")
+        .arg("clipboard")
+        .arg("-t")
+        .arg("image/png") // Specify MIME type for PNG image
+        .arg("-i")
+        .arg(output_path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .expect("Failed to execute command");
 
+        if output.status.success() {
+            println!("Image copied to clipboard successfully");
+        } else {
+            println!("Failed to copy image to clipboard");
+        }
+    } else {
+        clipboard.set_image(img)
+        .with_context(|| "Error copying into the clipboard")?;
+    }
+        
     Ok(())
 }
 

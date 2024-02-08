@@ -6,9 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-global-hotkey = "0.2.3"
+global-hotkey = "0.4.2"
 winapi = { version = "0.3", features = ["winuser"] }
 overlay_process = { path = "../overlay_process" }
 screenshots = "0.6.0"
+
+[target.'cfg(windows)'.dependencies]
 systray = "0.4.0"
+
 

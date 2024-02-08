@@ -82,7 +82,7 @@ fn main() {
         .launch(initial_state)
         .expect("Failed to launch application");
 
-
+    thread::sleep(Duration::from_secs(1));
     let screens = Screen::all().unwrap();
     unsafe {
         thread::sleep(Duration::from_secs(DELAY_VALUE as u64));
@@ -204,11 +204,11 @@ impl druid::AppDelegate<MainState> for Delegate {
                     .expect("Failed to start background listener");
             Handled::Yes
         } else if cmd.is(FULLSCREEN){
-            Application::global().quit();
             unsafe {
                 GLOBAL_STATE = 2;
                 DELAY_VALUE = data.delay_state;
             }
+            Application::global().quit();
            Handled::Yes
         } else if cmd.is(DELAY){
             if let Some(number) = cmd.get(DELAY) {
