@@ -23,10 +23,8 @@ extern crate systray;
 #[cfg(target_os = "windows")] 
 use systray::{Application};
 
-
 use std::sync::{Arc, Mutex};
 use std::thread;
-
 
 pub fn parse_hotkey(shortcut_string: String) -> Option<(Modifiers, Code)> {
 
@@ -107,13 +105,22 @@ pub fn main(){
         }
     }
 
-    let helper_str = format!(
-        "The program is now listening in the background.\n\
-        Click ({}) to open the screenshot overlay\n\
-        Click ({}) to take a fullscreen screenshot.",
-        shortcut_string,
-        shortcut_fs
-    );
+    let mut helper_str = "".to_string();
+    if cfg!(target_os = "windows"){
+        helper_str = format!(
+            "The program is now listening in the background.\n\
+            Click ({}) to open the screenshot overlay\n\
+            Click ({}) to take a fullscreen screenshot.",
+            shortcut_string,
+            shortcut_fs
+        );
+    } else {
+        helper_str = format!(
+            "The program is now listening in the background\\nClick ({}) to open the screenshot overlay.\\nClick ({}) to take a fullscreen screenshot.\\nClick SHIFT+Q to quit the app.",
+            shortcut_string,
+            shortcut_fs
+        );
+    }
     show_message_box("Background listener", &helper_str, None);
 
     let shortcut_command = parse_hotkey(shortcut_string.clone());
@@ -188,12 +195,14 @@ pub fn main(){
             let manager = GlobalHotKeyManager::new().unwrap();
             let hotkey1 = HotKey::new(Some(modifier),key1);
             let hotkey2 = HotKey::new(Some(modifier2),key2);
+            let hotkey_linux_quit = HotKey::new(Some(Modifiers::SHIFT), Code::KeyQ);
 
             let id1 = hotkey1.id();
             let id2 = hotkey2.id();
+            let id3 = hotkey_linux_quit.id();
             let _ = manager.register(hotkey1);
             let _2 = manager.register(hotkey2);
-
+            let _3 = manager.register(hotkey_linux_quit);
 
             //Run the win32 event loop on the same thread
             //Questo loop unsafe è specifico di windows, dentro poi chiama le funzionalità del global hotkey, controllando anche il mutex del system tray se è stata quittata l'app.
@@ -253,11 +262,6 @@ pub fn main(){
             #[cfg(target_os = "linux")] {
 
                 loop {
-
-                    // Check if we need to close
-                    if !*running.lock().unwrap() {
-                        break;
-                    }
                     // Check for global hotkey events
                     if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
                         if event.id == id1 && event.state == HotKeyState::Released {
@@ -278,6 +282,8 @@ pub fn main(){
                                     eprintln!("Failed to capture screenshot: {}", err);
                                 }
                             }
+                        } else if event.id == id3 && event.state == HotKeyState::Released {
+                            std::process::exit(0);
                         }
                     }
                 }
@@ -285,5 +291,7 @@ pub fn main(){
         }
     }
     
-    //handle.join().unwrap();
+    #[cfg(target_os = "windows")] {
+        handle.join().unwrap();
+    }
 }

@@ -14,4 +14,3 @@ screenshots = "0.6.0"
 [target.'cfg(windows)'.dependencies]
 systray = "0.4.0"
 
-
