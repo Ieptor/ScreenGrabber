@@ -6,9 +6,7 @@ use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::Mutex;
 use crate::IconData;
-use std::process::Command;
 
-use overlay_process::utils::get_project_src_path;
 
 
 #[derive(PartialEq, Debug)]

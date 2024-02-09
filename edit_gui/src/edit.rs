@@ -647,7 +647,7 @@ impl Widget<AppState> for Edit {
 
         let bottom_total_width = 3.0 * icon_width;
         let bottom_spacing = (size.width as f64 - bottom_total_width) / 7.0;
-        let below_image_y = 665.0;
+        let below_image_y = 656.0;
         let below_image_position = Point::new(bottom_spacing, below_image_y);
         self.bottom_pos = below_image_position;
 

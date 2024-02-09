@@ -9,7 +9,6 @@ use screenshots::Screen;
 mod custom_widgets;
 use custom_widgets::{initial_layout, save_path_layout, shortcut_layout};
 
-use std::path::Path;
 mod utils;
 use utils::{read_config_file};
 
@@ -88,7 +87,7 @@ fn main() {
         thread::sleep(Duration::from_secs(DELAY_VALUE as u64));
         if GLOBAL_STATE == 1 {
                         // Launch the overlay binary as a new process
-                        let mut exe_path = get_project_src_path();
+                        let exe_path = get_project_src_path();
                         let mut real_path = "".to_string();
 
                         if cfg!(target_os = "windows"){

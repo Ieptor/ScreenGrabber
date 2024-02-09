@@ -17,7 +17,6 @@ use native_dialog::{FileDialog, MessageDialog, MessageType};
 use screenshots::Image;
 
 use std::process::{Command, Stdio};
-use std::io::Write;
 
 pub fn compute_window_size()-> anyhow::Result<(i32, i32, i32, i32)> {
     let screens = Screen::all().context("Impossible to retrieve available screens.")?;
