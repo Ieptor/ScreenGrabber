@@ -186,12 +186,23 @@ fn handle_windows_code(id1: u32, id2: u32, overlay_path: String, edit_path: Stri
         Ok::<(), systray::Error>(()) // Specify the error type explicitly
     }).unwrap();
 
+    
+    let exe_path = get_project_src_path();
+    let gui = exe_path.display().to_string() + r"/gui_sg/target/release/gui_sg.exe";
+    app.add_menu_item("Open GUI", move |window| {
+        let _ = Command::new(gui.clone())
+                        .spawn()
+                        .expect("Failed to start overlay process");
+        window.quit();
+        Ok::<(), systray::Error>(()) // Specify the error type explicitly
+    }).unwrap();
+
+
     // Add a quit item to the menu
     app.add_menu_item("Quit", |window| {
         window.quit();
         Ok::<(), systray::Error>(()) // Specify the error type explicitly
     }).unwrap();
-
     
     //needed to notify closing in systray to actual listener closing
     let running = Arc::new(Mutex::new(true));
@@ -245,7 +256,7 @@ fn handle_windows_code(id1: u32, id2: u32, overlay_path: String, edit_path: Stri
                         .expect("Failed to start overlay process");
                 } else if event.id == id2 && event.state == HotKeyState::Released {
                     let screens = Screen::all().unwrap();
-                    match capture_full_screen_screenshot(Some(screens[0]), true) {
+                    match capture_full_screen_screenshot(Some(screens[0]), true, false) {
                         Ok(path) => {
                             let _ = Command::new(edit_path.clone())
                             .arg(&path)
@@ -277,7 +288,7 @@ fn handle_linux_code(id1: u32, id2: u32, id3: u32, overlay_path: String, edit_pa
                     .expect("Failed to start overlay process");
             } else if event.id == id2 && event.state == HotKeyState::Released {
                 let screens = Screen::all().unwrap();
-                match capture_full_screen_screenshot(Some(screens[0]), true) {
+                match capture_full_screen_screenshot(Some(screens[0]), true, false) {
                     Ok(path) => {
                         let _ = Command::new(edit_path.clone())
                         .arg(&path)

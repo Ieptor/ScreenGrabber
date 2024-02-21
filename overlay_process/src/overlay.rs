@@ -251,7 +251,7 @@ impl Widget<AppState> for ScreenshotOverlay {
         //ctx.fill(container_rect, &rectangle_color);
     
         let image = ctx
-                .make_image(64, 64, &self.icon_data.quit_icon, ImageFormat::Rgb)
+                .make_image(64, 64, &self.icon_data.quit_icon.to_rgba8(), ImageFormat::RgbaSeparate)
                 .unwrap();
         ctx.draw_image(&image, icon_rect, InterpolationMode::Bilinear);
         
@@ -288,7 +288,7 @@ impl Widget<AppState> for ScreenshotOverlay {
                 //ctx.fill(container_rect, &rectangle_color);
             
                 let image = ctx
-                        .make_image(64, 64, &self.icon_data.quit_icon, ImageFormat::Rgb)
+                        .make_image(64, 64, &self.icon_data.quit_icon.to_rgba8(), ImageFormat::RgbaSeparate)
                         .unwrap();
                 ctx.draw_image(&image, icon_rect, InterpolationMode::Bilinear);
         } 
@@ -306,12 +306,12 @@ impl Widget<AppState> for ScreenshotOverlay {
                 let right_button_rect = Rect::from_origin_size(right_button_origin, icon_size);
 
                 let image = ctx
-                    .make_image(32, 32, &self.icon_data.save_icon, ImageFormat::Rgb)
+                    .make_image(32, 32, &self.icon_data.save_icon.to_rgba8(), ImageFormat::RgbaSeparate)
                     .unwrap();
                 ctx.draw_image(&image, left_button_rect, InterpolationMode::Bilinear);
 
                 let image = ctx
-                    .make_image(32, 32, &self.icon_data.broom_icon, ImageFormat::Rgb)
+                    .make_image(32, 32, &self.icon_data.broom_icon.to_rgba8(), ImageFormat::RgbaSeparate)
                     .unwrap();
                 ctx.draw_image(&image, right_button_rect, InterpolationMode::Bilinear);
 

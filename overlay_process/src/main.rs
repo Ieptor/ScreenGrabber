@@ -13,7 +13,7 @@ use native_dialog::MessageType;
 
 mod overlay;
 use overlay::*;
-use image::load_from_memory;
+use image::{load_from_memory, DynamicImage};
 
 mod utils;
 use utils::{compute_window_size, capture_screenshot, show_message_box, get_project_src_path};
@@ -23,9 +23,9 @@ const SAVE_ICON_DATA: &[u8] = include_bytes!("../../icons/save-icon.png");
 const QUIT_ICON_DATA: &[u8] = include_bytes!("../../icons/back_from_overlay.png");
 
 pub struct IconData {
-    save_icon: Vec<u8>,  
-    quit_icon: Vec<u8>,  
-    broom_icon: Vec<u8>,
+    save_icon: DynamicImage,  
+    quit_icon: DynamicImage,  
+    broom_icon: DynamicImage,
 }
 
 fn initialize_icons() -> anyhow::Result<IconData> {
@@ -36,9 +36,9 @@ fn initialize_icons() -> anyhow::Result<IconData> {
 
 
     Ok(IconData {
-        save_icon: save_icon.to_rgb8().to_vec(),
-        quit_icon: quit_icon.to_rgb8().to_vec(),
-        broom_icon: broom_icon.to_rgb8().to_vec(),
+        save_icon: save_icon,
+        quit_icon: quit_icon,
+        broom_icon: broom_icon,
     })
     
 }

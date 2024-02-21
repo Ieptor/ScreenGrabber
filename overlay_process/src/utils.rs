@@ -111,17 +111,17 @@ pub fn capture_screenshot(mut selection: Rect, screen: Option<Screen>) -> Result
     if screenshots.len() > 1 {
         // *************************************** merge all the screenshots ***************************************
         let image = from_multiple_image_to_single_image(screenshots)?;
-        handle_save_screenshot(image)
+        handle_save_screenshot(image, false)
     } else {
         // *************************************** save only one screenshot ***************************************
         let image = screenshots.pop().ok_or(anyhow!("No screenshot available"))?;
-        handle_save_screenshot(image)
+        handle_save_screenshot(image, false)
     }
 
 }
 
 
-pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool) -> Result<PathBuf> {
+pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool, back: bool) -> Result<PathBuf> {
     let screen_shoot: Image;
 
     if all_screens {
@@ -139,7 +139,7 @@ pub fn capture_full_screen_screenshot(screen: Option<Screen>, all_screens: bool)
         screen_shoot = selected_screen.capture().context("Failed to capture screen")?;
     }
 
-    handle_save_screenshot(screen_shoot)
+    handle_save_screenshot(screen_shoot, back)
     //Ok(())
 }
 
@@ -156,7 +156,7 @@ fn read_config_file_savepath(file_path: &Path) -> anyhow::Result<String> {
     Err(anyhow::anyhow!("Config file is empty"))
 } 
 
-fn handle_save_screenshot(screen_shoot: Image) -> Result<PathBuf> {
+fn handle_save_screenshot(screen_shoot: Image, back: bool) -> Result<PathBuf> {
 
     let path_str = get_config_file_path();
 
@@ -198,10 +198,26 @@ fn handle_save_screenshot(screen_shoot: Image) -> Result<PathBuf> {
         return Ok(output_path.to_path_buf());
 
     } else {
-        //show_message_box("Error", "Select a folder!", MessageType::Info);
+        if back {
+            show_message_box("Error", "Select a folder!", Some(MessageType::Info));
+            let exe_path = get_project_src_path();
+            let mut real_path = "".to_string();
+
+            if cfg!(target_os = "windows"){
+                real_path = exe_path.display().to_string() + r"/gui_sg/target/release/gui_sg.exe";
+            }
+            if cfg!(target_os = "linux"){
+                real_path = exe_path.display().to_string() + r"/gui_sg/target/release/gui_sg";
+            }
+
+            let _ = Command::new(real_path)
+                    .spawn()
+                    .expect("Failed to start process");
+
+            
+        } 
         bail!("Select a folder!")
     }
-
 }
 
 

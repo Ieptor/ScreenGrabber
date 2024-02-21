@@ -322,7 +322,7 @@ pub fn save_path_layout() -> impl Widget<MainState> {
     let button_row = create_button_row();
 
     let label = Label::new(|_data: &MainState, _env: &_| {
-        format!("Choose save directory")
+        format!("Choose default save directory:")
     }).with_text_color(Color::BLACK);
 
     let text_input_widget = TextBox::new()
@@ -368,12 +368,12 @@ pub fn shortcut_layout() -> impl Widget<MainState> {
     let button_row = create_button_row();
 
     let label = Label::new(|_data: &MainState, _env: &_| {
-        format!("Hotkeys: (ctrl + 'key')")
+        format!("Save hotkeys for background listener: (ctrl + 'key')")
     }).with_text_color(Color::BLACK);
 
 
     let shortcut_label = Label::new(|_data: &MainState, _env: &_| {
-        format!("Background listener:")
+        format!("Capture Area:")
     }).with_text_color(Color::BLACK);
 
     let shortcut_textbox = TextBox::new()

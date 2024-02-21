@@ -102,7 +102,7 @@ fn main() {
                             .spawn()
                             .expect("Failed to start overlay process");
         } else if GLOBAL_STATE == 2 {
-            match capture_full_screen_screenshot(Some(screens[0]), true){
+            match capture_full_screen_screenshot(Some(screens[0]), true, true){
                 Ok(path) => {
                     let exe_path = get_project_src_path();
                     let mut real_path = "".to_string();
