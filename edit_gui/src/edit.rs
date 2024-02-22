@@ -208,7 +208,7 @@ impl Widget<AppState> for Edit {
                         4 => {
                             //Redo
                             let (edits, index) = &self.list_of_edits;
-                            if *index < 5 && (edits.len() != *index) {
+                            if *index < 10 && (edits.len() != *index) {
                                 let redo_index = *index + 1;
                                 self.images.screenshot = edits[redo_index-1].clone();
                                 self.list_of_edits = (edits.clone(), redo_index);
@@ -242,21 +242,21 @@ impl Widget<AppState> for Edit {
 
                                 let sub_image = screenshot.crop(point.x as u32, point.y as u32, width, height);
 
-                                let resized_image = resize_image(sub_image.clone(), (1200, 500));
-                                self.images.screenshot = resized_image.clone();
+                                //let resized_image = resize_image(sub_image.clone(), (1200, 500));
+                                self.images.screenshot = sub_image.clone();
 
                                 //update edit list for undo/redo
                                 let (edits, index) = &self.list_of_edits;
                                 let mut edits_clone = edits.clone(); 
 
-                                if *index == 5 {
+                                if *index == 10 {
                                     edits_clone.remove(0);
-                                    edits_clone.push(resized_image.clone());
+                                    edits_clone.push(sub_image.clone());
                                     self.list_of_edits = (edits_clone, *index);
                                 } else {
                                     let truncate_index = *index;
                                     edits_clone.truncate(truncate_index);
-                                    edits_clone.push(resized_image.clone());
+                                    edits_clone.push(sub_image.clone());
                                     let new_index = edits_clone.len();
                                     self.list_of_edits = (edits_clone, new_index);
                                 }
@@ -307,7 +307,7 @@ impl Widget<AppState> for Edit {
                         let (edits, index) = &self.list_of_edits;
                         let mut edits_clone = edits.clone(); 
 
-                        if *index == 5 {
+                        if *index == 10 {
                             edits_clone.remove(0);
                             edits_clone.push(blended.clone());
                             self.list_of_edits = (edits_clone, *index);

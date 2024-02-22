@@ -100,6 +100,7 @@ pub fn main(){
             shortcut_fs = fs
         },
         Err(_) => {
+            show_message_box("Background listener", "Something went wrong reading the config file", None);
             eprintln!("Error reading config file");
         }
     }
@@ -124,7 +125,7 @@ pub fn main(){
 
     let shortcut_command = parse_hotkey(shortcut_string.clone());
     let shortcut_fs_command = parse_hotkey(shortcut_fs.clone());
-    
+ 
     let exe_path = get_project_src_path();
     let mut overlay_path = "".to_string();
     let mut edit_path = "".to_string();
