@@ -163,14 +163,14 @@ fn handle_save_screenshot(screen_shoot: Image, back: bool) -> Result<PathBuf> {
     let path = match read_config_file_savepath(&path_str) {
         Ok(path) => path,
         Err(_) => {
-            show_message_box("Error", "The path does not exist! Configure the saving path from the settings.", Some(MessageType::Error));
+            //show_message_box("Error", "The path does not exist! Configure the saving path from the settings.", Some(MessageType::Error));
             anyhow::bail!("The path does not exist! Configure the saving path from the settings.")
         }
     };
 
     // Verifica se il percorso di salvataggio esiste
     if !Path::new(&path).exists() {
-        //show_message_box("Error", "The path does not exist! Configure the saving path from the settings.", MessageType::Error);
+        show_message_box("Error", "The path does not exist! Configure the saving path from the settings.", Some(MessageType::Error));
         anyhow::bail!("The path does not exist! Configure the saving path from the settings.");
     }
 
